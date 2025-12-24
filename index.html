@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Nabla Operator Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/mathlive"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+    <style>
+        body { background-color: #34495e; font-family: 'Varela Round', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; color: #ecf0f1; overflow: hidden; user-select: none; }
+        
+        /* Layout Mobile Friendly */
+        #opponent-area { flex: 1; border-bottom: 2px dashed rgba(189, 195, 199, 0.2); display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.15); padding: 5px 0; gap: 2px; }
+        #battlefield { flex: 0.6; display: flex; justify-content: space-between; align-items: center; position: relative; padding: 0 20px; background: rgba(0,0,0,0.05); }
+        #player-area { flex: 1.6; border-top: 2px dashed rgba(189, 195, 199, 0.2); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 40px; background: rgba(0,0,0,0.15); }
+
+        .section-label { font-size: 10px; color: #bdc3c7; text-transform: uppercase; letter-spacing: 1px; text-align: center; width: 100%; margin: 2px 0; opacity: 0.8; font-weight: bold; }
+
+        .card { width: 70px; height: 100px; background-color: #fdfdfd; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin: 3px; color: #2c3e50; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s; border: 1px solid #bdc3c7; position: relative; overflow: hidden; }
+        .card.selected { border: 3px solid #f1c40f; transform: translateY(-10px); }
+        .card.discard-target { border: 3px dashed #e74c3c; animation: pulse-red 1s infinite; }
+        .card-image, .card-bg-layer { width: 100%; height: 100%; object-fit: fill; position: absolute; top: 0; left: 0; }
+        .card-image { z-index: 1; } .card-bg-layer { z-index: 0; }
+        .card-dynamic-content { font-family: 'Varela Round', sans-serif; font-size: 18px; font-weight: bold; text-align: center; position: relative; z-index: 2; color: #34495e; width: 90%; word-wrap: break-word; }
+        .card-back { border: 2px solid white; }
+        
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 #e74c3c; } 50% { box-shadow: 0 0 10px #e74c3c; } 100% { box-shadow: 0 0 0 #e74c3c; } }
+        @keyframes pop-destroy { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 1; filter: brightness(3) sepia(1) hue-rotate(-50deg) saturate(5); } 100% { transform: scale(0); opacity: 0; } }
+        .destroy-anim { animation: pop-destroy 0.6s ease-in-out forwards !important; z-index: 1000 !important; pointer-events: none; }
+        .discarding-anim { position: fixed; z-index: 9999; transition: all 0.8s cubic-bezier(0.455, 0.03, 0.515, 0.955); pointer-events: none; }
+
+        .hand { display: flex; justify-content: center; gap: -2px; min-height: 110px; width: 100%; }
+        .slots { display: flex; gap: 8px; margin-bottom: 5px; align-items: center; justify-content: center; width: 100%; }
+        .slot { width: 80px; height: 110px; border: 2px dashed rgba(236, 240, 241, 0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); transition: background 0.3s; }
+        .slot.targetable { background: rgba(231, 76, 60, 0.2); border-color: #e74c3c; } 
+        .slot.placable { background: rgba(46, 204, 113, 0.2); border-color: #2ecc71; } 
+        .slot.pending-selection { background: rgba(52, 152, 219, 0.4); border-color: #3498db; }
+        .slot-label { font-size: 10px; color: #bdc3c7; }
+
+        .deck-container { display: flex; flex-direction: column; align-items: center; width: 80px; }
+        .deck-pile { width: 60px; height: 85px; background-color: #fff; border-radius: 6px; display: flex; justify-content: center; align-items: center; box-shadow: 2px 2px 0 #2c3e50; border: 1px solid #bdc3c7; }
+        .deck-count { font-size: 12px; margin-top: 5px; font-weight: bold; }
+
+        .game-info { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 5px; }
+        .game-title { opacity: 0.2; color: white; font-size: 30px; margin: 0; font-weight: 800; letter-spacing: 3px; }
+        .turn-badge { background: #3498db; color: white; padding: 5px 15px; border-radius: 15px; font-size: 12px; font-weight: bold; z-index: 10; transition: background 0.3s; text-align: center; }
+        .turn-badge.opponent-turn { background: #e74c3c; }
+
+        .controls-container { width: 80px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+        .btn-game { padding: 8px 5px; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; color: white; box-shadow: 0 3px 0 rgba(0,0,0,0.2); font-size: 10px; text-transform: uppercase; font-family: 'Varela Round'; width: 100%; }
+        .btn-pass { background: #2980b9; } .btn-pass:hover { background: #3498db; }
+        .btn-discard { background: #c0392b; } .btn-discard:hover { background: #e74c3c; }
+        .btn-game:disabled { background: #95a5a6; cursor: not-allowed; box-shadow: none; opacity: 0.7; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(44, 62, 80, 0.98); z-index: 3000; justify-content: center; align-items: center; flex-direction: column; }
+        .modal-box { background: #ecf0f1; color: #2c3e50; padding: 20px; border-radius: 15px; text-align: center; width: 90%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; }
+        
+        .lobby-btn { width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; font-family: 'Varela Round'; }
+        .btn-create { background: #27ae60; color: white; }
+        .btn-join { background: #2980b9; color: white; }
+        .lobby-input { padding: 15px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; width: 90%; margin-top: 10px; text-align: center; font-family: 'Varela Round'; }
+
+        .btn-verify-group { display: flex; gap: 10px; margin-top: 15px; width: 100%; justify-content: center; }
+        .btn-accept, .btn-reject { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Varela Round'; font-size: 14px; color: white; width: 45%; }
+        .btn-accept { background: #27ae60; } .btn-reject { background: #c0392b; }
+
+        /* TASTIERA E CALCOLO */
+        #calc-modal { z-index: 4000; }
+        .duel-display { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 10px 0; font-size: 20px; color: #2c3e50; flex-wrap: wrap; }
+        math-field { width: 90%; font-size: 24px; padding: 8px; border: 2px solid #bdc3c7; border-radius: 8px; background: #fff; margin-bottom: 10px; outline: none; }
+        math-field::part(virtual-keyboard-toggle) { display: none; }
+        .keyboard-tabs { display: flex; width: 100%; margin-bottom: 0; background: #dfe6e9; border-radius: 8px 8px 0 0; padding: 4px; gap: 4px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; font-weight: bold; color: #7f8c8d; cursor: pointer; }
+        .tab-btn.active { background: #fff; color: #2c3e50; }
+        .keyboard-content { background: #dfe6e9; padding: 8px; border-radius: 0 0 8px 8px; width: 100%; }
+        .grid-123, .grid-fx { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
+        .grid-fx { grid-template-columns: repeat(6, 1fr); display: none; }
+        .key { background: #fff; border: 1px solid #b2bec3; border-radius: 4px; height: 40px; font-size: 16px; cursor: pointer; display: flex; justify-content: center; align-items: center; color: #2d3436; }
+        .key:active { background: #ecf0f1; transform: scale(0.95); }
+        .k-num, .k-op { font-family: 'Varela Round', sans-serif; font-style: normal; }
+        .k-blue { background: #3498db; color: white; }
+
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 15px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #copy-id-area { background: rgba(0,0,0,0.1); padding: 10px; border-radius: 5px; margin: 10px 0; cursor: pointer; font-family: monospace; font-size: 16px; color: #2c3e50; border: 1px dashed #2c3e50; user-select: all; }
+        
+        #bot-toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(231, 76, 60, 0.95); color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; z-index: 5000; display: none; font-size: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    </style>
+</head>
+<body>
+
+    <div id="lobby-modal" class="modal-overlay" style="display:flex;">
+        <div class="modal-box">
+            <h1 style="margin:0; font-size:30px;">NABLA ONLINE</h1>
+            <p style="font-size:14px; opacity:0.7;">Versione PC & Tablet</p>
+            
+            <div id="lobby-controls" style="width:100%;">
+                <button class="lobby-btn btn-create" onclick="createGame()">CREA PARTITA</button>
+                <div style="margin: 10px;">oppure</div>
+                <input type="text" id="join-id-input" class="lobby-input" placeholder="Incolla ID qui">
+                <button class="lobby-btn btn-join" onclick="joinGame()">UNISCITI</button>
+            </div>
+            
+            <div id="waiting-screen" style="display:none; width:100%;">
+                <h3>In attesa dell'avversario...</h3>
+                <p>Manda questo codice al tuo amico:</p>
+                <div id="copy-id-area" onclick="copyId()">Generazione ID...</div>
+                <div style="font-size: 12px; color:#7f8c8d;">(Toccami per copiare)</div>
+                <div class="loader"></div>
+                <button onclick="location.reload()" style="margin-top:10px; background:none; border:none; text-decoration:underline; cursor:pointer; color:#c0392b;">Annulla</button>
+            </div>
+            <div id="connection-error" style="color: #c0392b; margin-top: 10px; display: none;"></div>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div id="game-over-title" style="font-size:30px; font-weight:800;">HAI VINTO!</div>
+            <div id="game-over-message">Partita terminata.</div>
+            <button class="lobby-btn btn-join" onclick="location.reload()">MENU PRINCIPALE</button>
+        </div>
+    </div>
+
+    <div id="bot-toast">L'Avversario sta pensando...</div>
+
+    <div id="verify-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="margin:0">CONTROLLO</h3>
+            <div id="verify-text" style="margin:10px; color:#7f8c8d; font-size:14px;">L'avversario propone:</div>
+            <div class="duel-display" id="verify-display"></div>
+            <div id="verify-buttons" class="btn-verify-group">
+                <button class="btn-reject" onclick="sendVerification(false)">CONTESTA ❌</button>
+                <button class="btn-accept" onclick="sendVerification(true)">ACCETTA ✅</button>
+            </div>
+            <div id="verify-waiting" style="display:none; color:#7f8c8d; margin-top:20px;">In attesa dell'avversario...</div>
+        </div>
+    </div>
+
+    <div id="calc-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="margin:0 0 10px 0; color:#34495e;">CALCOLA</h3>
+            <div class="duel-display" id="duel-images"></div>
+            <math-field id="math-input" virtual-keyboard-mode="manual"></math-field>
+            <div class="keyboard-tabs">
+                <button class="tab-btn active" id="btn-tab-123" onclick="switchTab('123')">123</button>
+                <button class="tab-btn" id="btn-tab-fx" onclick="switchTab('fx')">f(x)</button>
+            </div>
+            <div class="keyboard-content">
+                <div class="grid-123" id="tab-123">
+                    <div class="key" onmousedown="e(event); i('x')">x</div>
+                    <div class="key" onmousedown="e(event); i('y')">y</div>
+                    <div class="key" onmousedown="e(event); i('z')">z</div>
+                    <div class="key" onmousedown="e(event); i('\\pi')">π</div>
+                    <div class="key k-num" onmousedown="e(event); i('7')">7</div>
+                    <div class="key k-num" onmousedown="e(event); i('8')">8</div>
+                    <div class="key k-num" onmousedown="e(event); i('9')">9</div>
+                    <div class="key k-op" onmousedown="e(event); i('\\times')">×</div>
+                    <div class="key k-op" onmousedown="e(event); i('\\div')">÷</div>
+                    <div class="key" onmousedown="e(event); i('^2')">x²</div>
+                    <div class="key" onmousedown="e(event); i('^{#?}')">xʸ</div>
+                    <div class="key" onmousedown="e(event); i('\\sqrt{#?}')">√</div>
+                    <div class="key" onmousedown="e(event); i('e')">e</div>
+                    <div class="key k-num" onmousedown="e(event); i('4')">4</div>
+                    <div class="key k-num" onmousedown="e(event); i('5')">5</div>
+                    <div class="key k-num" onmousedown="e(event); i('6')">6</div>
+                    <div class="key k-op" onmousedown="e(event); i('+')">+</div>
+                    <div class="key k-op" onmousedown="e(event); i('-')">-</div>
+                    <div class="key k-op" onmousedown="e(event); i('<')">&lt;</div>
+                    <div class="key k-op" onmousedown="e(event); i('>')">&gt;</div>
+                    <div class="key" onmousedown="e(event); i('\\frac{#@}{#?}')">a/b</div>
+                    <div class="key" onmousedown="e(event); i(',')">,</div>
+                    <div class="key k-num" onmousedown="e(event); i('1')">1</div>
+                    <div class="key k-num" onmousedown="e(event); i('2')">2</div>
+                    <div class="key k-num" onmousedown="e(event); i('3')">3</div>
+                    <div class="key k-op" onmousedown="e(event); i('=')">=</div>
+                    <div class="key k-dark" onmousedown="e(event); c('deleteBackward')">⌫</div>
+                    <div class="key" onmousedown="e(event); i('(')">(</div>
+                    <div class="key" onmousedown="e(event); i(')')">)</div>
+                    <div class="key" onmousedown="e(event); i('|#?|')">|a|</div>
+                    <div class="key" onmousedown="e(event); i('!')">!</div>
+                    <div class="key k-num" onmousedown="e(event); i('0')">0</div>
+                    <div class="key k-num" onmousedown="e(event); i('.')">.</div>
+                    <div class="key k-dark" onmousedown="e(event); c('moveToPreviousChar')">←</div>
+                    <div class="key k-dark" onmousedown="e(event); c('moveToNextChar')">→</div>
+                    <div class="key k-blue" onmousedown="e(event); confirmCalculation()">↵</div>
+                </div>
+                <div class="grid-fx" id="tab-fx">
+                    <div class="key" onmousedown="e(event); i('\\sin(#?)')">sin</div>
+                    <div class="key" onmousedown="e(event); i('\\cos(#?)')">cos</div>
+                    <div class="key" onmousedown="e(event); i('\\tan(#?)')">tan</div>
+                    <div class="key" onmousedown="e(event); i('\\ln(#?)')">ln</div>
+                    <div class="key" onmousedown="e(event); i('\\log_{10}(#?)')">log₁₀</div>
+                    <div class="key" onmousedown="e(event); i('\\log_{#?}(#?)')">logₐ</div>
+                    <div class="key" onmousedown="e(event); i('\\sin^{-1}(#?)')">sin⁻¹</div>
+                    <div class="key" onmousedown="e(event); i('\\cos^{-1}(#?)')">cos⁻¹</div>
+                    <div class="key" onmousedown="e(event); i('\\tan^{-1}(#?)')">tan⁻¹</div>
+                    <div class="key" onmousedown="e(event); i('e^{#?}')">eˣ</div>
+                    <div class="key" onmousedown="e(event); i('10^{#?}')">10ˣ</div>
+                    <div class="key" onmousedown="e(event); i('\\sqrt[#?]{#?}')">ⁿ√</div>
+                    <div class="key" onmousedown="e(event); i('\\int')">∫</div>
+                    <div class="key" onmousedown="e(event); i('\\lim_{x \\to #?}')">lim</div>
+                    <div class="key" onmousedown="e(event); i('\\infty')">∞</div>
+                    <div class="key" onmousedown="e(event); i('\\le')">≤</div>
+                    <div class="key" onmousedown="e(event); i('\\ge')">≥</div>
+                    <div class="key k-dark" onmousedown="e(event); c('deleteBackward')">⌫</div>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="cancel-btn" onclick="closeModal()">Annulla</button></div>
+        </div>
+    </div>
+
+    <div id="opponent-area">
+        <div class="section-label">MANO AVVERSARIO</div>
+        <div class="hand" id="opponent-hand"></div>
+        <div class="slots" id="opponent-slots"></div>
+    </div>
+
+    <div id="battlefield">
+        <div class="deck-container">
+            <div class="deck-pile" id="deck-display">
+                <img src="img/retro.png" style="width:100%; height:100%; object-fit:cover;">
+            </div>
+            <div class="deck-count" id="deck-count-text">?</div>
+        </div>
+        <div class="game-info">
+            <h1 class="game-title">NABLA</h1>
+            <div class="turn-badge" id="turn-badge">IN ATTESA...</div>
+        </div>
+        <div class="controls-container">
+            <button class="btn-game btn-discard" id="btn-discard" onclick="toggleDiscardMode()">SCARTA</button>
+            <button class="btn-game btn-pass" id="btn-pass" onclick="localPassTurn()">PASSA</button>
+        </div>
+    </div>
+
+    <div id="player-area">
+        <div class="section-label">LE TUE FUNZIONI</div>
+        <div class="slots" id="player-slots"></div>
+        <div class="section-label" style="margin-top: 10px;">LA TUA MANO</div>
+        <div class="hand" id="my-hand"></div>
+    </div>
+
+    <script>
+        /* CONFIGURAZIONE PEERJS PER MOBILE */
+        // Usiamo i server STUN di Google per aggirare i problemi di connessione Mobile/PC
+        const peerConfig = {
+            debug: 2,
+            config: {
+                'iceServers': [
+                    { url: 'stun:stun.l.google.com:19302' },
+                    { url: 'stun:stun1.l.google.com:19302' }
+                ]
+            }
+        };
+
+        const mf = document.getElementById('math-input');
+        function e(ev){ ev.preventDefault(); }
+        function i(l){ mf.executeCommand(['insert', l]); mf.focus(); }
+        function c(cmd){ mf.executeCommand(cmd); mf.focus(); }
+        function switchTab(t){
+            document.getElementById('tab-123').style.display = (t==='123')?'grid':'none';
+            document.getElementById('tab-fx').style.display = (t==='fx')?'grid':'none';
+            document.getElementById('btn-tab-123').className = (t==='123')?'tab-btn active':'tab-btn';
+            document.getElementById('btn-tab-fx').className = (t==='fx')?'tab-btn active':'tab-btn';
+            mf.focus();
+        }
+
+        const cardDatabase = {
+            "0": "zero.png", "1": "uno.png", "x": "x.png", "x^2": "x_2.png", 
+            "e^x": "esponenziale.png", "\\sin(x)": "senx.png", "\\sin x": "senx.png",
+            "\\cos(x)": "cosx.png", "\\cos x": "cosx.png"
+        };
+
+        /* PEERJS & GAME STATE */
+        let peer, conn;
+        let isHost = false;
+        let myId = null;
+        
+        let myHandData = [];
+        let playerSlotsData = [];
+        let opponentSlotsData = [];
+        let opponentHandCount = 5;
+        let gameDeckCount = 0;
+        
+        let isMyTurn = false;
+        let selectedHandCardId = null;
+        let discardMode = false;
+        let targetSlotId = null; // Fix: Dichiarato globale per non perderlo
+        let firstSelection = null; // Fix: Per i binari
+
+        function initGameData(isCreator) {
+            const initialField = [
+                { id: 'f1', type: 'func', name: '1', img: 'uno.png' },
+                { id: 'f2', type: 'func', name: 'x', img: 'x.png' },
+                { id: 'f3', type: 'func', name: 'x^2', img: 'x_2.png' }
+            ];
+            playerSlotsData = JSON.parse(JSON.stringify(initialField));
+            opponentSlotsData = JSON.parse(JSON.stringify(initialField));
+            
+            if (isCreator) {
+                let deck = createDeck();
+                for(let i=0; i<5; i++) myHandData.push(drawFromDeck(deck));
+                let clientHand = [];
+                for(let i=0; i<5; i++) clientHand.push(drawFromDeck(deck));
+                
+                gameDeckCount = deck.length;
+                isMyTurn = true; 
+                updateUI();
+
+                window.initialStateForClient = {
+                    hand: clientHand,
+                    deckCount: deck.length
+                };
+            }
+        }
+
+        /* LOBBY */
+        function createGame() {
+            isHost = true;
+            document.getElementById('lobby-controls').style.display = 'none';
+            document.getElementById('waiting-screen').style.display = 'block';
+            
+            peer = new Peer(peerConfig);
+            
+            peer.on('open', (id) => {
+                myId = id;
+                document.getElementById('copy-id-area').innerText = id;
+                initGameData(true);
+            });
+
+            peer.on('error', (err) => {
+                document.getElementById('connection-error').innerText = "Errore Connessione: " + err.type;
+                document.getElementById('connection-error').style.display = 'block';
+            });
+
+            peer.on('connection', (c) => {
+                conn = c;
+                setupConnection();
+                setTimeout(() => {
+                    conn.send({
+                        type: 'INIT',
+                        hand: window.initialStateForClient.hand,
+                        deckCount: window.initialStateForClient.deckCount
+                    });
+                    document.getElementById('lobby-modal').style.display = 'none';
+                }, 1000); // Ritardo per stabilità connessione
+            });
+        }
+
+        function joinGame() {
+            const hostId = document.getElementById('join-id-input').value.trim();
+            if(!hostId) return alert("Inserisci un ID!");
+            
+            isHost = false;
+            peer = new Peer(peerConfig);
+            
+            peer.on('error', (err) => {
+                alert("Errore: " + err.type + ". Controlla l'ID o la rete.");
+            });
+
+            peer.on('open', () => {
+                document.getElementById('lobby-controls').innerHTML = "Connessione in corso...";
+                conn = peer.connect(hostId);
+                setupConnection();
+            });
+        }
+
+        function setupConnection() {
+            conn.on('data', (data) => {
+                handleNetworkData(data);
+            });
+            conn.on('open', () => {
+                if(!isHost) console.log("Connesso all'host!");
+            });
+        }
+
+        function copyId() {
+            if(myId) {
+                navigator.clipboard.writeText(myId).then(() => {
+                    const el = document.getElementById('copy-id-area');
+                    const orig = el.innerText;
+                    el.innerText = "COPIATO!";
+                    setTimeout(() => el.innerText = orig, 1500);
+                });
+            }
+        }
+
+        /* RETE */
+        function handleNetworkData(data) {
+            switch(data.type) {
+                case 'INIT':
+                    initGameData(false);
+                    myHandData = data.hand;
+                    gameDeckCount = data.deckCount;
+                    isMyTurn = false;
+                    document.getElementById('lobby-modal').style.display = 'none';
+                    updateUI();
+                    break;
+
+                case 'UPDATE_STATE':
+                    opponentSlotsData = data.playerSlots;
+                    opponentHandCount = data.handCount;
+                    gameDeckCount = data.deckCount;
+                    updateUI();
+                    break;
+
+                case 'REQUEST_VERIFY':
+                    showVerifyModal(data.opCard, data.targetIndex, data.resultLatex);
+                    break;
+
+                case 'VERIFY_RESULT':
+                    document.getElementById('verify-modal').style.display = 'none';
+                    document.getElementById('verify-waiting').style.display = 'none';
+                    document.getElementById('verify-buttons').style.display = 'flex';
+                    if(data.approved) {
+                        applyMyMove(data.resultLatex);
+                    } else {
+                        alert("Contestazione! Mossa annullata.");
+                        selectedHandCardId = null;
+                        updateUI();
+                    }
+                    break;
+
+                case 'TURN_CHANGE':
+                    isMyTurn = true;
+                    if(data.updatedField) opponentSlotsData = data.updatedField;
+                    opponentHandCount = data.handCount;
+                    gameDeckCount = data.deckCount;
+                    checkWin();
+                    updateUI();
+                    break;
+                
+                case 'GAME_OVER':
+                    showGameOver(data.win);
+                    break;
+            }
+        }
+
+        /* GIOCO */
+        function createDeck() {
+            let deck = [];
+            for(let i=0; i<8; i++) deck.push({ type: 'op', name: 'Derivata', img: 'derivata.png' });
+            for(let i=0; i<4; i++) deck.push({ type: 'op', name: 'Radice',   img: 'sqrt.png' });
+            for(let i=0; i<4; i++) deck.push({ type: 'op', name: 'Integrale',img: 'integrale.png' });
+            for(let i=0; i<4; i++) deck.push({ type: 'op', name: 'Per',      img: 'per.png', isBinary: true });
+            for(let i=0; i<4; i++) deck.push({ type: 'func', name: 'x', img: 'x.png' });
+            for(let i=0; i<3; i++) deck.push({ type: 'func', name: 'x^2', img: 'x_2.png' });
+            return deck.sort(() => Math.random() - 0.5);
+        }
+
+        function drawFromDeck(deckRef) {
+            if (deckRef.length > 0) {
+                let card = deckRef.pop();
+                card.id = Math.random().toString(36).substr(2, 9);
+                return card;
+            }
+            return null;
+        }
+
+        function localDraw() {
+            let card = createDeck()[0]; 
+            card.id = Math.random().toString(36).substr(2, 9);
+            myHandData.push(card);
+            gameDeckCount--;
+        }
+
+        function updateUI() {
+            const handDiv = document.getElementById('my-hand');
+            handDiv.innerHTML = '';
+            myHandData.forEach(card => {
+                const el = createCardElement(card, false, 'hand');
+                if(card.id === selectedHandCardId) el.classList.add('selected');
+                if(discardMode) el.classList.add('discard-target');
+                handDiv.appendChild(el);
+            });
+
+            renderSlots('player-slots', playerSlotsData, true);
+            renderSlots('opponent-slots', opponentSlotsData, false);
+
+            const oppHand = document.getElementById('opponent-hand');
+            oppHand.innerHTML = '';
+            for(let i=0; i<opponentHandCount; i++) oppHand.appendChild(createCardElement({name:'retro'}, true));
+
+            document.getElementById('deck-count-text').innerText = Math.max(0, gameDeckCount);
+            const badge = document.getElementById('turn-badge');
+            if(isMyTurn) {
+                badge.innerText = "IL TUO TURNO";
+                badge.classList.remove('opponent-turn');
+                document.getElementById('btn-pass').disabled = false;
+                document.getElementById('btn-discard').disabled = false;
+            } else {
+                badge.innerText = "TURNO AVVERSARIO";
+                badge.classList.add('opponent-turn');
+                document.getElementById('btn-pass').disabled = true;
+                document.getElementById('btn-discard').disabled = true;
+            }
+
+            if(window.MathJax) MathJax.typeset();
+        }
+
+        function renderSlots(divId, data, isMine) {
+            const container = document.getElementById(divId);
+            container.innerHTML = '';
+            data.forEach((card, index) => {
+                const slot = document.createElement('div');
+                slot.className = 'slot';
+                
+                if (isMine && isMyTurn && !discardMode) {
+                    if (card.type === 'empty' && selectedHandCardId) {
+                        const handCard = myHandData.find(c => c.id === selectedHandCardId);
+                        if (handCard && handCard.type === 'func') {
+                            slot.classList.add('placable');
+                            slot.onclick = () => performPlace(index);
+                        }
+                    }
+                } else if (!isMine && isMyTurn && !discardMode) {
+                    if (card.type !== 'empty' && selectedHandCardId) {
+                        const handCard = myHandData.find(c => c.id === selectedHandCardId);
+                        if (handCard && handCard.type === 'op') {
+                            slot.classList.add('targetable');
+                            if (firstSelection && firstSelection.index === index) slot.classList.add('pending-selection');
+                            slot.onclick = () => handleAttackClick(index); // Separata funzione
+                        }
+                    }
+                }
+
+                if (card.type !== 'empty') slot.appendChild(createCardElement(card));
+                else slot.innerHTML = '<div class="slot-label">Vuoto</div>';
+                container.appendChild(slot);
+            });
+        }
+
+        function createCardElement(cardData, isFaceDown = false, location = 'table') {
+            const div = document.createElement('div');
+            div.className = 'card';
+            if(location === 'hand') div.id = `card-${cardData.id}`; // ID per animazione
+
+            if (isFaceDown) {
+                div.innerHTML = `<img src="img/retro.png" class="card-image"><div class="card-back"></div>`;
+            } else {
+                if (cardData.img) {
+                    div.innerHTML = `<img src="img/${cardData.img}" class="card-image"><div class="card-dynamic-content" style="display:none">$$${cardData.name}$$</div>`;
+                } else {
+                    div.innerHTML = `<img src="img/empty.png" class="card-bg-layer"><div class="card-dynamic-content">$$${cardData.name}$$</div>`;
+                }
+                if (location === 'hand') {
+                    div.onclick = () => {
+                        if (!isMyTurn) return;
+                        if (discardMode) { handleDiscard(cardData); return; }
+                        selectedHandCardId = (selectedHandCardId === cardData.id) ? null : cardData.id;
+                        firstSelection = null;
+                        updateUI();
+                    };
+                }
+            }
+            return div;
+        }
+
+        /* LOGICA DI GIOCO */
+        function performPlace(index) {
+            const card = myHandData.find(c => c.id === selectedHandCardId);
+            playerSlotsData[index] = { ...card, type: 'func' };
+            myHandData = myHandData.filter(c => c.id !== selectedHandCardId);
+            selectedHandCardId = null;
+            sendStateAndPass();
+        }
+
+        function handleAttackClick(index) {
+            const handCard = myHandData.find(c => c.id === selectedHandCardId);
+            if(handCard.isBinary) {
+                if(!firstSelection) {
+                    firstSelection = { index: index };
+                    updateUI();
+                } else {
+                    openCalculationModalBinary(index);
+                }
+            } else {
+                openCalculationModal(index);
+            }
+        }
+
+        function openCalculationModal(targetIdx) {
+            targetSlotId = targetIdx;
+            const handCard = myHandData.find(c => c.id === selectedHandCardId);
+            const targetCard = opponentSlotsData[targetIdx];
+            
+            const display = document.getElementById('duel-images');
+            display.innerHTML = '';
+            
+            const imgOp = document.createElement('img'); imgOp.src = `img/${handCard.img}`; imgOp.style.width = '60px';
+            display.appendChild(imgOp);
+            display.innerHTML += " <span style='font-size:20px; margin:0 10px'>SU</span> ";
+            
+            if(targetCard.img) {
+                const imgT = document.createElement('img'); imgT.src = `img/${targetCard.img}`; imgT.style.width = '60px'; display.appendChild(imgT);
+            } else {
+                const sp = document.createElement('span'); sp.innerHTML = `$$${targetCard.name}$$`; display.appendChild(sp);
+            }
+            
+            mf.setValue('');
+            document.getElementById('calc-modal').style.display = 'flex';
+            if(window.MathJax) MathJax.typeset();
+        }
+
+        function openCalculationModalBinary(secondIdx) {
+            targetSlotId = secondIdx; // Il risultato va sul secondo
+            const handCard = myHandData.find(c => c.id === selectedHandCardId);
+            const card1 = opponentSlotsData[firstSelection.index];
+            const card2 = opponentSlotsData[secondIdx];
+            
+            // Logica binaria non pienamente supportata nella V19 lite (richiede logica complessa di ID), 
+            // ma qui apriamo comunque la modale per permettere il calcolo manuale.
+            const display = document.getElementById('duel-images');
+            display.innerHTML = '';
+            // Visualizzazione semplice
+            const sp = document.createElement('span'); sp.innerText = "Operazione Binaria"; display.appendChild(sp);
+            
+            mf.setValue('');
+            document.getElementById('calc-modal').style.display = 'flex';
+        }
+
+        function confirmCalculation() {
+            const resultLatex = mf.getValue();
+            if (!resultLatex) return;
+            document.getElementById('calc-modal').style.display = 'none';
+            
+            const handCard = myHandData.find(c => c.id === selectedHandCardId);
+            
+            document.getElementById('verify-modal').style.display = 'flex';
+            document.getElementById('verify-buttons').style.display = 'none';
+            document.getElementById('verify-waiting').style.display = 'block';
+            document.getElementById('verify-text').innerText = "Inviato per approvazione...";
+            document.getElementById('verify-display').innerText = "";
+
+            conn.send({
+                type: 'REQUEST_VERIFY',
+                opCard: handCard,
+                targetIndex: targetSlotId,
+                resultLatex: resultLatex
+            });
+        }
+
+        function showVerifyModal(opCard, targetIdx, result) {
+            const targetCard = playerSlotsData[targetIdx];
+            const display = document.getElementById('verify-display');
+            display.innerHTML = '';
+            
+            const imgOp = document.createElement('img'); imgOp.src = `img/${opCard.img}`; imgOp.style.width = '50px';
+            display.appendChild(imgOp);
+            display.innerHTML += " <span style='font-size:18px'>su</span> ";
+            if(targetCard.img) {
+                const imgT = document.createElement('img'); imgT.src = `img/${targetCard.img}`; imgT.style.width = '50px'; display.appendChild(imgT);
+            } else {
+                const sp = document.createElement('span'); sp.innerHTML = `$$${targetCard.name}$$`; display.appendChild(sp);
+            }
+            display.innerHTML += " <span style='font-size:18px'>=</span> ";
+            const resSpan = document.createElement('span'); resSpan.innerHTML = `$$${result}$$`; 
+            display.appendChild(resSpan);
+
+            document.getElementById('verify-buttons').style.display = 'flex';
+            document.getElementById('verify-waiting').style.display = 'none';
+            document.getElementById('verify-modal').style.display = 'flex';
+            
+            if(window.MathJax) MathJax.typeset();
+        }
+
+        function sendVerification(approved) {
+            document.getElementById('verify-modal').style.display = 'none';
+            conn.send({ type: 'VERIFY_RESULT', approved: approved });
+            
+            if(approved) {
+                // Aggiorna subito il mio tavolo (subisco)
+                // Ma per sincronia perfetta, aspettiamo che l'attaccante mandi TURN_CHANGE con i dati
+            }
+        }
+
+        function applyMyMove(resultLatex) {
+            const targetList = opponentSlotsData;
+            let searchKey = resultLatex.replace(/\s/g, '').trim(); 
+            let newImage = null;
+            for (const [key, value] of Object.entries(cardDatabase)) {
+                if (key.replace(/\s/g, '') === searchKey.replace(/\s/g, '')) { newImage = value; break; }
+            }
+
+            if (searchKey === '0' || searchKey === '\\infty' || searchKey === 'infinity') {
+                // Animazione (sul DOM avversario locale)
+                const slotDiv = document.getElementById('opponent-slots').children[targetSlotId];
+                const cardDiv = slotDiv.querySelector('.card');
+                if(cardDiv) cardDiv.classList.add('destroy-anim');
+                
+                setTimeout(() => {
+                    targetList[targetSlotId] = { type: 'empty' };
+                    // Se binario, svuota anche il primo
+                    if(firstSelection) targetList[firstSelection.index] = { type: 'empty' };
+                    finalizeMove();
+                }, 600);
+            } else {
+                targetList[targetSlotId].name = resultLatex;
+                targetList[targetSlotId].img = newImage;
+                if(firstSelection) targetList[firstSelection.index] = { type: 'empty' };
+                finalizeMove();
+            }
+        }
+
+        function finalizeMove() {
+            myHandData = myHandData.filter(c => c.id !== selectedHandCardId);
+            selectedHandCardId = null; firstSelection = null;
+            sendStateAndPass();
+        }
+
+        /* SCARTO */
+        function toggleDiscardMode() {
+            if(!isMyTurn) return;
+            discardMode = !discardMode;
+            selectedHandCardId = null;
+            const btn = document.getElementById('btn-discard');
+            if(discardMode) {
+                btn.innerText = "ANNULLA";
+                btn.style.background = "#7f8c8d";
+            } else {
+                btn.innerText = "SCARTA";
+                btn.style.background = "#c0392b";
+            }
+            updateUI();
+        }
+        
+        function handleDiscard(cardData) {
+            const cardEl = document.getElementById(`card-${cardData.id}`);
+            const deckEl = document.getElementById('deck-display');
+            
+            if(cardEl && deckEl) {
+                // Animazione visiva
+                const cRect = cardEl.getBoundingClientRect();
+                const dRect = deckEl.getBoundingClientRect();
+                
+                // Clone per animazione
+                const clone = cardEl.cloneNode(true);
+                clone.style.position = 'fixed';
+                clone.style.left = cRect.left + 'px';
+                clone.style.top = cRect.top + 'px';
+                clone.style.margin = '0';
+                clone.classList.add('discarding-anim');
+                document.body.appendChild(clone);
+                
+                // Nascondi originale
+                cardEl.style.opacity = 0;
+
+                // Trigger anim
+                setTimeout(() => {
+                    clone.style.left = dRect.left + 'px';
+                    clone.style.top = dRect.top + 'px';
+                    clone.style.transform = 'scale(0.5)';
+                    clone.style.opacity = 0;
+                }, 50);
+
+                setTimeout(() => {
+                    clone.remove();
+                    myHandData = myHandData.filter(c => c.id !== cardData.id);
+                    localDraw();
+                    discardMode = false;
+                    document.getElementById('btn-discard').innerText = "SCARTA";
+                    document.getElementById('btn-discard').style.background = "#c0392b";
+                    sendStateAndPass();
+                }, 800);
+            } else {
+                // Fallback
+                myHandData = myHandData.filter(c => c.id !== cardData.id);
+                localDraw();
+                discardMode = false;
+                sendStateAndPass();
+            }
+        }
+
+        function localPassTurn() {
+            sendStateAndPass();
+        }
+
+        function sendStateAndPass() {
+            while(myHandData.length < 5 && gameDeckCount > 0) {
+                localDraw();
+            }
+            
+            isMyTurn = false;
+            updateUI();
+            
+            conn.send({
+                type: 'TURN_CHANGE',
+                updatedField: playerSlotsData, 
+                playerSlots: opponentSlotsData, 
+                handCount: myHandData.length,
+                deckCount: gameDeckCount
+            });
+            checkWin();
+        }
+
+        function checkWin() {
+            const myCards = playerSlotsData.filter(c => c.type !== 'empty').length;
+            const oppCards = opponentSlotsData.filter(c => c.type !== 'empty').length;
+            
+            if (myCards === 0) {
+                showGameOver(false);
+                conn.send({ type: 'GAME_OVER', win: true });
+            } else if (oppCards === 0) {
+                showGameOver(true);
+                conn.send({ type: 'GAME_OVER', win: false });
+            }
+        }
+
+        function showGameOver(win) {
+            const modal = document.getElementById('game-over-modal');
+            const title = document.getElementById('game-over-title');
+            if(win) {
+                title.innerText = "HAI VINTO! :D";
+                title.style.color = "#27ae60";
+            } else {
+                title.innerText = "HAI PERSO :(";
+                title.style.color = "#c0392b";
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('calc-modal').style.display = 'none'; }
+
+        updateUI();
+    </script>
+</body>
+</html>
