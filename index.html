@@ -2,11 +2,10 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Nabla Operator Game (Online)</title>
+    <title>Nabla Operator Game</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
 
     <script src="https://unpkg.com/mathlive"></script>
@@ -15,107 +14,63 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <style>
-        /* --- STILE GENERALE --- */
-        body {
-            background-color: #34495e; 
-            font-family: 'Varela Round', sans-serif;
-            margin: 0; display: flex; flex-direction: column; height: 100vh;
-            color: #ecf0f1; overflow: hidden; user-select: none;
-        }
-
-        /* --- AREE DI GIOCO --- */
-        #opponent-area {
-            flex: 1; border-bottom: 2px dashed rgba(189, 195, 199, 0.2);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            background: rgba(0,0,0,0.15); padding: 5px 0; gap: 2px;
-        }
-        #battlefield {
-            flex: 0.6; display: flex; justify-content: space-between; align-items: center;
-            position: relative; padding: 0 40px; background: rgba(0,0,0,0.05);
-        }
-        #player-area {
-            flex: 1.6; border-top: 2px dashed rgba(189, 195, 199, 0.2);
-            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
-            padding-bottom: 40px; background: rgba(0,0,0,0.15);
-        }
+        /* STILE GENERALE */
+        body { background-color: #34495e; font-family: 'Varela Round', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; color: #ecf0f1; overflow: hidden; user-select: none; }
+        
+        #opponent-area { flex: 1; border-bottom: 2px dashed rgba(189, 195, 199, 0.2); display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.15); padding: 5px 0; gap: 2px; }
+        #battlefield { flex: 0.6; display: flex; justify-content: space-between; align-items: center; position: relative; padding: 0 20px; background: rgba(0,0,0,0.05); }
+        #player-area { flex: 1.6; border-top: 2px dashed rgba(189, 195, 199, 0.2); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 40px; background: rgba(0,0,0,0.15); }
 
         .section-label { font-size: 10px; color: #bdc3c7; text-transform: uppercase; letter-spacing: 1px; text-align: center; width: 100%; margin: 2px 0; opacity: 0.8; font-weight: bold; }
 
-        /* --- CARTE --- */
-        .card {
-            width: 75px; height: 105px; background-color: #fdfdfd; border-radius: 6px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin: 3px; color: #2c3e50;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; 
-            border: 1px solid #bdc3c7; position: relative; overflow: hidden;
-        }
-        .card:hover { transform: translateY(-10px) scale(1.05); z-index: 100; border-color: #3498db; }
+        .card { width: 75px; height: 105px; background-color: #fdfdfd; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin: 3px; color: #2c3e50; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s, border 0.2s; border: 1px solid #bdc3c7; position: relative; overflow: hidden; }
         .card.selected { border: 3px solid #f1c40f; transform: translateY(-10px); }
         .card.discard-target { border: 3px dashed #e74c3c; animation: pulse-red 1s infinite; }
-
-        /* Immagini e Contenuti */
-        .card-image { width: 100%; height: 100%; object-fit: fill; position: absolute; top: 0; left: 0; z-index: 1; }
-        .card-bg-layer { width: 100%; height: 100%; object-fit: fill; position: absolute; top: 0; left: 0; z-index: 0; }
-        .card-dynamic-content { 
-            font-family: 'Varela Round', sans-serif; font-size: 18px; font-weight: bold; 
-            text-align: center; position: relative; z-index: 2; color: #34495e; width: 90%; word-wrap: break-word;
-        }
+        .card-image, .card-bg-layer { width: 100%; height: 100%; object-fit: fill; position: absolute; top: 0; left: 0; }
+        .card-image { z-index: 1; } .card-bg-layer { z-index: 0; }
+        .card-dynamic-content { font-family: 'Varela Round', sans-serif; font-size: 18px; font-weight: bold; text-align: center; position: relative; z-index: 2; color: #34495e; width: 90%; word-wrap: break-word; }
         .card-back { border: 2px solid white; }
-
-        /* Animazioni */
-        @keyframes pulse-red { 0% { box-shadow: 0 0 0 #e74c3c; } 50% { box-shadow: 0 0 10px #e74c3c; } 100% { box-shadow: 0 0 0 #e74c3c; } }
-        @keyframes pop-destroy { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 1; filter: brightness(3) sepia(1) hue-rotate(-50deg) saturate(5); box-shadow: 0 0 30px #e74c3c; border-color: #e74c3c; } 100% { transform: scale(0); opacity: 0; } }
-        .destroy-anim { animation: pop-destroy 0.6s ease-in-out forwards !important; z-index: 1000 !important; pointer-events: none; }
         
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 #e74c3c; } 50% { box-shadow: 0 0 10px #e74c3c; } 100% { box-shadow: 0 0 0 #e74c3c; } }
+        @keyframes pop-destroy { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 1; filter: brightness(3) sepia(1) hue-rotate(-50deg) saturate(5); } 100% { transform: scale(0); opacity: 0; } }
+        .destroy-anim { animation: pop-destroy 0.6s ease-in-out forwards !important; z-index: 1000 !important; pointer-events: none; }
+        .discarding-anim { position: fixed; z-index: 9999; transition: all 0.8s cubic-bezier(0.455, 0.03, 0.515, 0.955); pointer-events: none; }
+
         .hand { display: flex; justify-content: center; gap: -2px; min-height: 110px; width: 100%; }
         .slots { display: flex; gap: 8px; margin-bottom: 5px; align-items: center; justify-content: center; width: 100%; }
-        .slot {
-            width: 85px; height: 115px; border: 2px dashed rgba(236, 240, 241, 0.3);
-            border-radius: 8px; display: flex; justify-content: center; align-items: center;
-            background: rgba(255,255,255,0.05); transition: background 0.3s;
-        }
-        .slot.targetable { background: rgba(231, 76, 60, 0.2); cursor: crosshair; border-color: #e74c3c; } 
-        .slot.placable { background: rgba(46, 204, 113, 0.2); cursor: pointer; border-color: #2ecc71; } 
+        .slot { width: 85px; height: 115px; border: 2px dashed rgba(236, 240, 241, 0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); transition: background 0.3s; }
+        .slot.targetable { background: rgba(231, 76, 60, 0.2); border-color: #e74c3c; cursor: crosshair; } 
+        .slot.placable { background: rgba(46, 204, 113, 0.2); border-color: #2ecc71; cursor: pointer; } 
         .slot.pending-selection { background: rgba(52, 152, 219, 0.4); border-color: #3498db; }
-        .slot-label { font-size: 10px; color: #bdc3c7; text-align: center; }
+        .slot-label { font-size: 10px; color: #bdc3c7; }
 
-        /* Elementi Centrali */
         .deck-container { display: flex; flex-direction: column; align-items: center; width: 80px; }
-        .deck-pile { 
-            width: 65px; height: 90px; background-color: #fff; border-radius: 6px; 
-            display: flex; justify-content: center; align-items: center; 
-            box-shadow: 2px 2px 0 #2c3e50, 4px 4px 0 #2c3e50, 6px 6px 5px rgba(0,0,0,0.5);
-            cursor: not-allowed; overflow: hidden; border: 1px solid #bdc3c7;
-        }
+        .deck-pile { width: 65px; height: 90px; background-color: #fff; border-radius: 6px; display: flex; justify-content: center; align-items: center; box-shadow: 2px 2px 0 #2c3e50; border: 1px solid #bdc3c7; }
         .deck-count { font-size: 12px; margin-top: 5px; font-weight: bold; }
-
+        
         .game-info { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 5px; }
         .game-title { opacity: 0.2; color: white; font-size: 30px; margin: 0; font-weight: 800; letter-spacing: 3px; }
         .turn-badge { background: #3498db; color: white; padding: 5px 15px; border-radius: 15px; font-size: 12px; font-weight: bold; z-index: 10; transition: background 0.3s; text-align: center; }
         .turn-badge.opponent-turn { background: #e74c3c; }
 
         .controls-container { width: 80px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
-        .btn-game { 
-            padding: 8px 5px; font-weight: bold; border: none; border-radius: 20px; cursor: pointer;
-            color: white; box-shadow: 0 3px 0 rgba(0,0,0,0.2); 
-            transition: all 0.1s; font-size: 10px; text-transform: uppercase; font-family: 'Varela Round'; width: 100%;
-        }
+        .btn-game { padding: 8px 5px; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; color: white; box-shadow: 0 3px 0 rgba(0,0,0,0.2); font-size: 10px; text-transform: uppercase; font-family: 'Varela Round'; width: 100%; }
         .btn-pass { background: #2980b9; } .btn-pass:hover { background: #3498db; }
         .btn-discard { background: #c0392b; } .btn-discard:hover { background: #e74c3c; }
         .btn-game:disabled { background: #95a5a6; cursor: not-allowed; box-shadow: none; opacity: 0.7; }
 
-        /* MODALI (Overlay) */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(44, 62, 80, 0.98); z-index: 2000; justify-content: center; align-items: center; flex-direction: column; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(44, 62, 80, 0.98); z-index: 3000; justify-content: center; align-items: center; flex-direction: column; }
         .modal-box { background: #ecf0f1; color: #2c3e50; padding: 20px; border-radius: 15px; text-align: center; width: 90%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; }
         
-        /* LOBBY MODAL STYLES */
-        #lobby-modal { display: flex; z-index: 3000; } /* Attivo di default */
         .lobby-btn { width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; font-family: 'Varela Round'; }
         .btn-create { background: #27ae60; color: white; }
         .btn-join { background: #2980b9; color: white; }
         .lobby-input { padding: 15px; font-size: 24px; border-radius: 8px; border: 1px solid #ccc; width: 80%; margin-top: 10px; text-align: center; font-family: 'Varela Round'; letter-spacing: 5px; font-weight: bold; }
 
-        /* Tastiera */
+        .btn-verify-group { display: flex; gap: 10px; margin-top: 15px; width: 100%; justify-content: center; }
+        .btn-accept, .btn-reject { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Varela Round'; font-size: 14px; color: white; width: 45%; }
+        .btn-accept { background: #27ae60; } .btn-reject { background: #c0392b; }
+
         #calc-modal { z-index: 4000; }
         .duel-display { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 10px 0; font-size: 20px; color: #2c3e50; flex-wrap: wrap; }
         math-field { width: 90%; font-size: 24px; padding: 8px; border: 2px solid #bdc3c7; border-radius: 8px; background: #fff; margin-bottom: 10px; outline: none; }
@@ -124,44 +79,38 @@
         .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; font-weight: bold; color: #7f8c8d; cursor: pointer; }
         .tab-btn.active { background: #fff; color: #2c3e50; }
         .keyboard-content { background: #dfe6e9; padding: 8px; border-radius: 0 0 8px 8px; width: 100%; }
-        .grid-123 { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
-        .grid-fx { display: none; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+        .grid-123, .grid-fx { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
+        .grid-fx { grid-template-columns: repeat(6, 1fr); display: none; }
         .key { background: #fff; border: 1px solid #b2bec3; border-radius: 4px; height: 40px; font-size: 16px; cursor: pointer; display: flex; justify-content: center; align-items: center; color: #2d3436; }
         .key:active { background: #ecf0f1; transform: scale(0.95); }
         .k-num, .k-op { font-family: 'Varela Round', sans-serif; font-style: normal; }
         .k-blue { background: #3498db; color: white; }
 
-        /* Game Over */
-        .game-over-title { font-size: 30px; font-weight: 800; margin-bottom: 10px; }
-        .win-color { color: #27ae60; } .lose-color { color: #c0392b; }
-        
-        /* Notifiche Toast */
-        #game-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(52, 73, 94, 0.95); color: white; padding: 10px 20px; border-radius: 30px; font-weight: bold; z-index: 5000; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #copy-id-area { background: rgba(0,0,0,0.1); padding: 10px; border-radius: 5px; margin: 10px 0; cursor: pointer; font-family: monospace; font-size: 24px; color: #2c3e50; border: 1px dashed #2c3e50; user-select: all; font-weight: bold; letter-spacing: 3px; }
+        
+        #bot-toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(231, 76, 60, 0.95); color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; z-index: 5000; display: none; font-size: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
     </style>
 </head>
 <body>
 
-    <div id="lobby-modal" class="modal-overlay">
+    <div id="lobby-modal" class="modal-overlay" style="display:flex;">
         <div class="modal-box">
             <h1 style="margin:0; font-size:30px;">NABLA ONLINE</h1>
-            <p style="font-size:14px; opacity:0.7;">Gioca con un amico</p>
-            
+            <p style="font-size:14px; opacity:0.7;">Versione PC & Tablet</p>
             <div id="lobby-controls" style="width:100%;">
                 <button class="lobby-btn btn-create" onclick="createGame()">CREA PARTITA</button>
                 <div style="margin: 10px;">oppure</div>
                 <input type="number" id="join-id-input" class="lobby-input" placeholder="Codice 6 Cifre">
                 <button class="lobby-btn btn-join" onclick="joinGame()">UNISCITI</button>
             </div>
-            
             <div id="waiting-screen" style="display:none; width:100%;">
                 <h3>In attesa dell'avversario...</h3>
                 <p>Comunica questo codice:</p>
-                <div id="copy-id-area" style="font-size: 30px; font-weight: bold; letter-spacing: 5px; margin: 10px 0; cursor: pointer; color: #2c3e50; background:#dfe6e9; padding:10px; border-radius:8px;" onclick="copyId()">...</div>
-                <div style="font-size: 12px; color:#7f8c8d;">(Clicca per copiare)</div>
+                <div id="copy-id-area" onclick="copyId()">...</div>
                 <div class="loader"></div>
+                <button onclick="location.reload()" style="margin-top:10px; background:none; border:none; text-decoration:underline; cursor:pointer; color:#c0392b;">Annulla</button>
             </div>
             <div id="connection-error" style="color: #c0392b; margin-top: 10px; display: none;"></div>
         </div>
@@ -175,7 +124,20 @@
         </div>
     </div>
 
-    <div id="game-toast">Messaggio di sistema</div>
+    <div id="bot-toast">L'Avversario sta pensando...</div>
+
+    <div id="verify-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="margin:0">CONTROLLO</h3>
+            <div id="verify-text" style="margin:10px; color:#7f8c8d; font-size:14px;">L'avversario propone:</div>
+            <div class="duel-display" id="verify-display"></div>
+            <div id="verify-buttons" class="btn-verify-group" style="display:none;">
+                <button class="btn-reject" onclick="sendVerification(false)">CONTESTA ❌</button>
+                <button class="btn-accept" onclick="sendVerification(true)">ACCETTA ✅</button>
+            </div>
+            <div id="verify-waiting" style="display:none; color:#7f8c8d; margin-top:20px;">In attesa dell'avversario...</div>
+        </div>
+    </div>
 
     <div id="calc-modal" class="modal-overlay">
         <div class="modal-box">
@@ -269,7 +231,7 @@
         </div>
         <div class="controls-container">
             <button class="btn-game btn-discard" id="btn-discard" onclick="toggleDiscardMode()">SCARTA</button>
-            <button class="btn-game btn-pass" id="btn-pass" onclick="endTurn()">PASSA</button>
+            <button class="btn-game btn-pass" id="btn-pass" onclick="localPassTurn()">PASSA</button>
         </div>
     </div>
 
@@ -281,8 +243,7 @@
     </div>
 
     <script>
-        /* CONFIGURAZIONE PEERJS */
-        // Usiamo i server pubblici di Google per il NAT traversal (necessario per P2P)
+        const APP_PREFIX = "nabla-game-2025-v3-"; // Bump version to force fresh peers
         const peerConfig = {
             debug: 2,
             config: {
@@ -292,10 +253,7 @@
                 ]
             }
         };
-        // Prefisso per evitare collisioni con altre app PeerJS
-        const APP_PREFIX = "nabla-game-v18-"; 
 
-        /* TASTIERA */
         const mf = document.getElementById('math-input');
         function e(ev){ ev.preventDefault(); }
         function i(l){ mf.executeCommand(['insert', l]); mf.focus(); }
@@ -314,7 +272,6 @@
             "\\cos(x)": "cosx.png", "\\cos x": "cosx.png"
         };
 
-        /* STATO GIOCO MULTIPLAYER */
         let peer, conn;
         let isHost = false;
         let myIdShort = null;
@@ -329,119 +286,10 @@
         let selectedHandCardId = null;
         let discardMode = false;
         let targetSlotId = null; 
-        let targetOwnerIsMe = false; // Flag per capire chi sto attaccando
+        let targetOwnerIsMe = false; 
         let firstSelection = null; 
+        let currentVerifyRequest = null; // Important: stores the math to apply if accepted
 
-        /* --- LOBBY E CONNESSIONE --- */
-        function createGame() {
-            isHost = true;
-            document.getElementById('lobby-controls').style.display = 'none';
-            document.getElementById('waiting-screen').style.display = 'block';
-            
-            // Genera codice a 6 cifre casuale
-            myIdShort = Math.floor(100000 + Math.random() * 900000);
-            
-            peer = new Peer(APP_PREFIX + myIdShort, peerConfig);
-            
-            peer.on('open', (id) => {
-                document.getElementById('copy-id-area').innerText = myIdShort;
-                initGameData(true); // Host inizializza il gioco
-            });
-
-            peer.on('error', (err) => {
-                document.getElementById('connection-error').innerText = "Errore: " + err.type;
-                document.getElementById('connection-error').style.display = 'block';
-            });
-
-            peer.on('connection', (c) => {
-                conn = c;
-                setupConnection();
-                // Aspetta che la connessione sia stabile, poi invia dati iniziali
-                setTimeout(() => {
-                    conn.send({
-                        type: 'INIT',
-                        hand: window.initialStateForClient.hand,
-                        deckCount: window.initialStateForClient.deckCount
-                    });
-                    document.getElementById('lobby-modal').style.display = 'none';
-                    showToast("Avversario Connesso!");
-                }, 1000);
-            });
-        }
-
-        function joinGame() {
-            const inputId = document.getElementById('join-id-input').value.trim();
-            if(inputId.length !== 6) return alert("Il codice deve essere di 6 numeri.");
-            
-            isHost = false;
-            peer = new Peer(peerConfig); // Client ha ID automatico
-            
-            peer.on('error', (err) => {
-                alert("Impossibile connettersi. Controlla il codice.");
-            });
-
-            peer.on('open', () => {
-                document.getElementById('lobby-controls').innerHTML = "Connessione in corso...";
-                conn = peer.connect(APP_PREFIX + inputId);
-                setupConnection();
-            });
-        }
-
-        function setupConnection() {
-            conn.on('data', (data) => {
-                handleNetworkData(data);
-            });
-            conn.on('open', () => {
-                if(!isHost) {
-                    console.log("Connesso all'host!");
-                    showToast("Connesso! In attesa dei dati...");
-                }
-            });
-            conn.on('close', () => {
-                alert("L'avversario si è disconnesso.");
-                location.reload();
-            });
-        }
-
-        function copyId() {
-            navigator.clipboard.writeText(myIdShort).then(() => {
-                showToast("Codice Copiato!");
-            });
-        }
-
-        /* --- GESTIONE DATI DI RETE --- */
-        function handleNetworkData(data) {
-            console.log("Dati ricevuti:", data.type);
-            switch(data.type) {
-                case 'INIT':
-                    // Client riceve dati iniziali
-                    initGameData(false);
-                    myHandData = data.hand;
-                    gameDeckCount = data.deckCount;
-                    isMyTurn = false; 
-                    document.getElementById('lobby-modal').style.display = 'none';
-                    updateUI();
-                    break;
-
-                case 'TURN_CHANGE':
-                    // È il mio turno! Aggiorno i tavoli in base a cosa ha fatto l'altro
-                    isMyTurn = true;
-                    opponentSlotsData = data.senderField; // Il suo campo
-                    playerSlotsData = data.receiverField; // Il mio campo (aggiornato da lui)
-                    opponentHandCount = data.handCount;
-                    gameDeckCount = data.deckCount;
-                    checkWin(); // Controllo se ho perso
-                    showToast("È il tuo turno!");
-                    updateUI();
-                    break;
-                
-                case 'GAME_OVER':
-                    showGameOver(data.win); // True se ho vinto io (lui si è arreso/perso)
-                    break;
-            }
-        }
-
-        /* --- INIZIALIZZAZIONE --- */
         function initGameData(isCreator) {
             const initialField = [
                 { id: 'f1', type: 'func', name: '1', img: 'uno.png' },
@@ -454,8 +302,6 @@
             if (isCreator) {
                 let deck = createDeck();
                 for(let i=0; i<5; i++) myHandData.push(drawFromDeck(deck));
-                
-                // Prepara mano per il client
                 let clientHand = [];
                 for(let i=0; i<5; i++) clientHand.push(drawFromDeck(deck));
                 
@@ -463,7 +309,6 @@
                 isMyTurn = true; 
                 updateUI();
 
-                // Salva per invio successivo
                 window.initialStateForClient = {
                     hand: clientHand,
                     deckCount: deck.length
@@ -471,7 +316,84 @@
             }
         }
 
-        /* --- LOGICA DI GIOCO --- */
+        function createGame() {
+            isHost = true;
+            document.getElementById('lobby-controls').style.display = 'none';
+            document.getElementById('waiting-screen').style.display = 'block';
+            myIdShort = Math.floor(100000 + Math.random() * 900000);
+            peer = new Peer(APP_PREFIX + myIdShort, peerConfig);
+            peer.on('open', (id) => { document.getElementById('copy-id-area').innerText = myIdShort; initGameData(true); });
+            peer.on('error', (err) => { document.getElementById('connection-error').innerText = "Errore: " + err.type; document.getElementById('connection-error').style.display = 'block'; });
+            peer.on('connection', (c) => {
+                conn = c; setupConnection();
+                setTimeout(() => {
+                    conn.send({ type: 'INIT', hand: window.initialStateForClient.hand, deckCount: window.initialStateForClient.deckCount });
+                    document.getElementById('lobby-modal').style.display = 'none';
+                }, 1000);
+            });
+        }
+
+        function joinGame() {
+            const inputId = document.getElementById('join-id-input').value.trim();
+            if(inputId.length !== 6) return alert("Il codice deve essere di 6 numeri.");
+            isHost = false;
+            peer = new Peer(peerConfig); 
+            peer.on('error', (err) => { alert("Impossibile connettersi. Verifica il codice."); });
+            peer.on('open', () => {
+                document.getElementById('lobby-controls').innerHTML = "Connessione in corso...";
+                conn = peer.connect(APP_PREFIX + inputId);
+                setupConnection();
+            });
+        }
+
+        function setupConnection() {
+            conn.on('data', (data) => { handleNetworkData(data); });
+            conn.on('open', () => { if(!isHost) console.log("Connesso!"); });
+        }
+
+        function copyId() { navigator.clipboard.writeText(myIdShort).then(() => alert("Copiato!")); }
+
+        function handleNetworkData(data) {
+            switch(data.type) {
+                case 'INIT':
+                    initGameData(false);
+                    myHandData = data.hand;
+                    gameDeckCount = data.deckCount;
+                    isMyTurn = false; 
+                    document.getElementById('lobby-modal').style.display = 'none';
+                    updateUI();
+                    break;
+                case 'REQUEST_VERIFY':
+                    currentVerifyRequest = data; // Save incoming request
+                    showVerifyModal(data.opCard, data.targetIndex, data.resultLatex, data.isSelfTarget);
+                    break;
+                case 'VERIFY_RESULT':
+                    document.getElementById('verify-modal').style.display = 'none';
+                    document.getElementById('verify-waiting').style.display = 'none';
+                    document.getElementById('verify-buttons').style.display = 'flex';
+                    if(data.approved) {
+                        applyMyMove(data.resultLatex);
+                    } else {
+                        alert("Contestazione! Mossa annullata.");
+                        selectedHandCardId = null;
+                        updateUI();
+                    }
+                    break;
+                case 'TURN_CHANGE':
+                    isMyTurn = true;
+                    opponentSlotsData = data.senderField; 
+                    playerSlotsData = data.receiverField; 
+                    opponentHandCount = data.handCount;
+                    gameDeckCount = data.deckCount;
+                    checkWin();
+                    updateUI();
+                    break;
+                case 'GAME_OVER':
+                    showGameOver(data.win);
+                    break;
+            }
+        }
+
         function createDeck() {
             let deck = [];
             for(let i=0; i<8; i++) deck.push({ type: 'op', name: 'Derivata', img: 'derivata.png' });
@@ -492,7 +414,6 @@
             return null;
         }
 
-        // Simulazione pesca locale (in P2P reale servirebbe sync del seed, qui semplifichiamo)
         function localDraw() {
             let card = createDeck()[0]; 
             card.id = Math.random().toString(36).substr(2, 9);
@@ -501,7 +422,6 @@
         }
 
         function updateUI() {
-            // Mano
             const handDiv = document.getElementById('my-hand');
             handDiv.innerHTML = '';
             myHandData.forEach(card => {
@@ -511,19 +431,15 @@
                 handDiv.appendChild(el);
             });
 
-            // Campi
             renderSlots('player-slots', playerSlotsData, true);
             renderSlots('opponent-slots', opponentSlotsData, false);
 
-            // Mano avversario
             const oppHand = document.getElementById('opponent-hand');
             oppHand.innerHTML = '';
             for(let i=0; i<opponentHandCount; i++) oppHand.appendChild(createCardElement({name:'retro'}, true));
 
-            // Info
             document.getElementById('deck-count-text').innerText = Math.max(0, gameDeckCount);
             const badge = document.getElementById('turn-badge');
-            
             if(isMyTurn) {
                 badge.innerText = "IL TUO TURNO";
                 badge.classList.remove('opponent-turn');
@@ -535,7 +451,6 @@
                 document.getElementById('btn-pass').disabled = true;
                 document.getElementById('btn-discard').disabled = true;
             }
-
             if(window.MathJax) MathJax.typeset();
         }
 
@@ -549,12 +464,10 @@
                 if (isMyTurn && !discardMode) {
                     const handCard = myHandData.find(c => c.id === selectedHandCardId);
                     if (handCard) {
-                        // 1. PIAZZA SU VUOTO (Solo mio campo)
                         if (isMine && card.type === 'empty' && handCard.type === 'func') {
                             slot.classList.add('placable');
                             slot.onclick = () => performPlace(index);
                         }
-                        // 2. ATTACCA (Su qualsiasi carta non vuota)
                         else if (card.type !== 'empty' && handCard.type === 'op') {
                             slot.classList.add('targetable');
                             slot.onclick = () => handleAttackClick(index, isMine); 
@@ -593,7 +506,6 @@
             return div;
         }
 
-        /* AZIONI */
         function performPlace(index) {
             const card = myHandData.find(c => c.id === selectedHandCardId);
             playerSlotsData[index] = { ...card, type: 'func' };
@@ -612,23 +524,18 @@
         function openCalculationModal(targetIdx) {
             targetSlotId = targetIdx;
             const handCard = myHandData.find(c => c.id === selectedHandCardId);
-            
-            // Determina la carta target corretta
             const targetCard = targetOwnerIsMe ? playerSlotsData[targetIdx] : opponentSlotsData[targetIdx];
             
             const display = document.getElementById('duel-images');
             display.innerHTML = '';
-            
             const imgOp = document.createElement('img'); imgOp.src = `img/${handCard.img}`; imgOp.style.width = '70px';
             display.appendChild(imgOp);
             display.innerHTML += " <span style='font-size:20px; margin:0 10px'>SU</span> ";
-            
             if(targetCard.img) {
                 const imgT = document.createElement('img'); imgT.src = `img/${targetCard.img}`; imgT.style.width = '70px'; display.appendChild(imgT);
             } else {
                 const sp = document.createElement('span'); sp.innerHTML = `$$${targetCard.name}$$`; display.appendChild(sp);
             }
-            
             mf.setValue('');
             document.getElementById('calc-modal').style.display = 'flex';
             if(window.MathJax) MathJax.typeset();
@@ -638,10 +545,59 @@
             const resultLatex = mf.getValue();
             if (!resultLatex) return;
             document.getElementById('calc-modal').style.display = 'none';
-            applyMyMove(resultLatex); // APPLICA SUBITO LA MOSSA (Senza verifica avversario per fluidità)
+            const handCard = myHandData.find(c => c.id === selectedHandCardId);
+            
+            document.getElementById('verify-modal').style.display = 'flex';
+            document.getElementById('verify-buttons').style.display = 'none';
+            document.getElementById('verify-waiting').style.display = 'block';
+            document.getElementById('verify-text').innerText = "Inviato per approvazione...";
+            document.getElementById('verify-display').innerText = "";
+
+            conn.send({
+                type: 'REQUEST_VERIFY',
+                opCard: handCard,
+                targetIndex: targetSlotId,
+                resultLatex: resultLatex,
+                isSelfTarget: targetOwnerIsMe 
+            });
         }
 
-        // Funzione semplificata: chi calcola ha ragione (per evitare blocchi)
+        function showVerifyModal(opCard, targetIdx, result, isSelfTarget) {
+            const targetCard = isSelfTarget ? opponentSlotsData[targetIdx] : playerSlotsData[targetIdx];
+            const display = document.getElementById('verify-display');
+            display.innerHTML = '';
+            
+            const imgOp = document.createElement('img'); imgOp.src = `img/${opCard.img}`; imgOp.style.width = '50px';
+            display.appendChild(imgOp);
+            display.innerHTML += " <span style='font-size:18px'>su</span> ";
+            
+            if(targetCard.img) {
+                const imgT = document.createElement('img'); imgT.src = `img/${targetCard.img}`; imgT.style.width = '50px'; display.appendChild(imgT);
+            } else {
+                const sp = document.createElement('span'); 
+                sp.innerHTML = `$$${targetCard.name}$$`; 
+                display.appendChild(sp);
+            }
+            
+            display.innerHTML += " <span style='font-size:18px'>=</span> ";
+            const resSpan = document.createElement('span'); 
+            resSpan.innerHTML = `$$${result}$$`; 
+            display.appendChild(resSpan);
+
+            document.getElementById('verify-buttons').style.display = 'flex';
+            document.getElementById('verify-waiting').style.display = 'none';
+            document.getElementById('verify-text').innerText = "L'avversario propone:";
+            document.getElementById('verify-modal').style.display = 'flex';
+            if(window.MathJax) MathJax.typeset();
+        }
+
+        function sendVerification(approved) {
+            document.getElementById('verify-modal').style.display = 'none';
+            // Important fix: send back the resultLatex stored from request
+            const resToSend = currentVerifyRequest ? currentVerifyRequest.resultLatex : null;
+            conn.send({ type: 'VERIFY_RESULT', approved: approved, resultLatex: resToSend });
+        }
+
         function applyMyMove(resultLatex) {
             const targetList = targetOwnerIsMe ? playerSlotsData : opponentSlotsData;
             const containerId = targetOwnerIsMe ? 'player-slots' : 'opponent-slots';
@@ -652,7 +608,6 @@
                 if (key.replace(/\s/g, '') === searchKey.replace(/\s/g, '')) { newImage = value; break; }
             }
 
-            // Se 0 o infinito -> Distruzione
             if (searchKey === '0' || searchKey === '\\infty' || searchKey === 'infinity') {
                 const slotDiv = document.getElementById(containerId).children[targetSlotId];
                 const cardDiv = slotDiv.querySelector('.card');
@@ -677,27 +632,6 @@
             sendStateAndPass();
         }
 
-        function endTurn() { sendStateAndPass(); }
-
-        function sendStateAndPass() {
-            // Pesca fine turno
-            while(myHandData.length < 5 && gameDeckCount > 0) { localDraw(); }
-            
-            isMyTurn = false;
-            updateUI();
-            
-            // Invia dati all'avversario
-            conn.send({
-                type: 'TURN_CHANGE',
-                senderField: opponentSlotsData, // Gli mando il MIO opponent (che è il suo player)
-                receiverField: playerSlotsData, // Gli mando il MIO player (che è il suo opponent)
-                handCount: myHandData.length,
-                deckCount: gameDeckCount
-            });
-            checkWin();
-        }
-
-        /* SCARTO */
         function toggleDiscardMode() {
             if(!isMyTurn) return;
             discardMode = !discardMode;
@@ -731,36 +665,33 @@
             }
         }
 
-        /* VINCI/PERDI */
+        function localPassTurn() { sendStateAndPass(); }
+
+        function sendStateAndPass() {
+            while(myHandData.length < 5 && gameDeckCount > 0) { localDraw(); }
+            isMyTurn = false;
+            updateUI();
+            conn.send({ type: 'TURN_CHANGE', receiverField: playerSlotsData, senderField: opponentSlotsData, handCount: myHandData.length, deckCount: gameDeckCount });
+            checkWin();
+        }
+
         function checkWin() {
             const myCards = playerSlotsData.filter(c => c.type !== 'empty').length;
             const oppCards = opponentSlotsData.filter(c => c.type !== 'empty').length;
-            
-            if (myCards === 0) {
-                showGameOver(false);
-                conn.send({ type: 'GAME_OVER', win: true });
-            } else if (oppCards === 0) {
-                showGameOver(true);
-                conn.send({ type: 'GAME_OVER', win: false });
-            }
+            if (myCards === 0) { showGameOver(false); conn.send({ type: 'GAME_OVER', win: true }); } 
+            else if (oppCards === 0) { showGameOver(true); conn.send({ type: 'GAME_OVER', win: false }); }
         }
 
         function showGameOver(win) {
             const modal = document.getElementById('game-over-modal');
             const title = document.getElementById('game-over-title');
-            const msg = document.getElementById('game-over-message');
-            if(win) { title.innerText = "HAI VINTO! :D"; title.style.color = "#27ae60"; msg.innerText="L'avversario è stato eliminato."; } 
-            else { title.innerText = "HAI PERSO :("; title.style.color = "#c0392b"; msg.innerText="Sei stato eliminato."; }
+            if(win) { title.innerText = "HAI VINTO! :D"; title.style.color = "#27ae60"; } 
+            else { title.innerText = "HAI PERSO :("; title.style.color = "#c0392b"; }
             modal.style.display = 'flex';
         }
 
-        function showToast(msg) {
-            const toast = document.getElementById('game-toast');
-            toast.innerText = msg; toast.style.display = 'block';
-            setTimeout(() => toast.style.display = 'none', 3000);
-        }
-
         function closeModal() { document.getElementById('calc-modal').style.display = 'none'; }
+        updateUI();
     </script>
 </body>
 </html>
