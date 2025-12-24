@@ -14,15 +14,11 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <style>
-        /* STILE GENERALE */
         body { background-color: #34495e; font-family: 'Varela Round', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; color: #ecf0f1; overflow: hidden; user-select: none; }
-        
         #opponent-area { flex: 1; border-bottom: 2px dashed rgba(189, 195, 199, 0.2); display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.15); padding: 5px 0; gap: 2px; }
         #battlefield { flex: 0.6; display: flex; justify-content: space-between; align-items: center; position: relative; padding: 0 20px; background: rgba(0,0,0,0.05); }
         #player-area { flex: 1.6; border-top: 2px dashed rgba(189, 195, 199, 0.2); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 40px; background: rgba(0,0,0,0.15); }
-
         .section-label { font-size: 10px; color: #bdc3c7; text-transform: uppercase; letter-spacing: 1px; text-align: center; width: 100%; margin: 2px 0; opacity: 0.8; font-weight: bold; }
-
         .card { width: 75px; height: 105px; background-color: #fdfdfd; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin: 3px; color: #2c3e50; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s, border 0.2s; border: 1px solid #bdc3c7; position: relative; overflow: hidden; }
         .card.selected { border: 3px solid #f1c40f; transform: translateY(-10px); }
         .card.discard-target { border: 3px dashed #e74c3c; animation: pulse-red 1s infinite; }
@@ -30,12 +26,10 @@
         .card-image { z-index: 1; } .card-bg-layer { z-index: 0; }
         .card-dynamic-content { font-family: 'Varela Round', sans-serif; font-size: 18px; font-weight: bold; text-align: center; position: relative; z-index: 2; color: #34495e; width: 90%; word-wrap: break-word; }
         .card-back { border: 2px solid white; }
-        
         @keyframes pulse-red { 0% { box-shadow: 0 0 0 #e74c3c; } 50% { box-shadow: 0 0 10px #e74c3c; } 100% { box-shadow: 0 0 0 #e74c3c; } }
         @keyframes pop-destroy { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 1; filter: brightness(3) sepia(1) hue-rotate(-50deg) saturate(5); } 100% { transform: scale(0); opacity: 0; } }
         .destroy-anim { animation: pop-destroy 0.6s ease-in-out forwards !important; z-index: 1000 !important; pointer-events: none; }
         .discarding-anim { position: fixed; z-index: 9999; transition: all 0.8s cubic-bezier(0.455, 0.03, 0.515, 0.955); pointer-events: none; }
-
         .hand { display: flex; justify-content: center; gap: -2px; min-height: 110px; width: 100%; }
         .slots { display: flex; gap: 8px; margin-bottom: 5px; align-items: center; justify-content: center; width: 100%; }
         .slot { width: 85px; height: 115px; border: 2px dashed rgba(236, 240, 241, 0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); transition: background 0.3s; }
@@ -43,34 +37,27 @@
         .slot.placable { background: rgba(46, 204, 113, 0.2); border-color: #2ecc71; cursor: pointer; } 
         .slot.pending-selection { background: rgba(52, 152, 219, 0.4); border-color: #3498db; }
         .slot-label { font-size: 10px; color: #bdc3c7; }
-
         .deck-container { display: flex; flex-direction: column; align-items: center; width: 80px; }
         .deck-pile { width: 65px; height: 90px; background-color: #fff; border-radius: 6px; display: flex; justify-content: center; align-items: center; box-shadow: 2px 2px 0 #2c3e50; border: 1px solid #bdc3c7; }
         .deck-count { font-size: 12px; margin-top: 5px; font-weight: bold; }
-        
         .game-info { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 5px; }
         .game-title { opacity: 0.2; color: white; font-size: 30px; margin: 0; font-weight: 800; letter-spacing: 3px; }
         .turn-badge { background: #3498db; color: white; padding: 5px 15px; border-radius: 15px; font-size: 12px; font-weight: bold; z-index: 10; transition: background 0.3s; text-align: center; }
         .turn-badge.opponent-turn { background: #e74c3c; }
-
         .controls-container { width: 80px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
         .btn-game { padding: 8px 5px; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; color: white; box-shadow: 0 3px 0 rgba(0,0,0,0.2); font-size: 10px; text-transform: uppercase; font-family: 'Varela Round'; width: 100%; }
         .btn-pass { background: #2980b9; } .btn-pass:hover { background: #3498db; }
         .btn-discard { background: #c0392b; } .btn-discard:hover { background: #e74c3c; }
         .btn-game:disabled { background: #95a5a6; cursor: not-allowed; box-shadow: none; opacity: 0.7; }
-
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(44, 62, 80, 0.98); z-index: 3000; justify-content: center; align-items: center; flex-direction: column; }
         .modal-box { background: #ecf0f1; color: #2c3e50; padding: 20px; border-radius: 15px; text-align: center; width: 90%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; }
-        
         .lobby-btn { width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; font-family: 'Varela Round'; }
         .btn-create { background: #27ae60; color: white; }
         .btn-join { background: #2980b9; color: white; }
         .lobby-input { padding: 15px; font-size: 24px; border-radius: 8px; border: 1px solid #ccc; width: 80%; margin-top: 10px; text-align: center; font-family: 'Varela Round'; letter-spacing: 5px; font-weight: bold; }
-
         .btn-verify-group { display: flex; gap: 10px; margin-top: 15px; width: 100%; justify-content: center; }
         .btn-accept, .btn-reject { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Varela Round'; font-size: 14px; color: white; width: 45%; }
         .btn-accept { background: #27ae60; } .btn-reject { background: #c0392b; }
-
         #calc-modal { z-index: 4000; }
         .duel-display { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 10px 0; font-size: 20px; color: #2c3e50; flex-wrap: wrap; }
         math-field { width: 90%; font-size: 24px; padding: 8px; border: 2px solid #bdc3c7; border-radius: 8px; background: #fff; margin-bottom: 10px; outline: none; }
@@ -79,18 +66,18 @@
         .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; font-weight: bold; color: #7f8c8d; cursor: pointer; }
         .tab-btn.active { background: #fff; color: #2c3e50; }
         .keyboard-content { background: #dfe6e9; padding: 8px; border-radius: 0 0 8px 8px; width: 100%; }
-        .grid-123, .grid-fx { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
-        .grid-fx { grid-template-columns: repeat(6, 1fr); display: none; }
+        .grid-123 { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; }
+        .grid-fx { display: none; grid-template-columns: repeat(6, 1fr); gap: 4px; }
         .key { background: #fff; border: 1px solid #b2bec3; border-radius: 4px; height: 40px; font-size: 16px; cursor: pointer; display: flex; justify-content: center; align-items: center; color: #2d3436; }
         .key:active { background: #ecf0f1; transform: scale(0.95); }
         .k-num, .k-op { font-family: 'Varela Round', sans-serif; font-style: normal; }
         .k-blue { background: #3498db; color: white; }
-
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #copy-id-area { background: rgba(0,0,0,0.1); padding: 10px; border-radius: 5px; margin: 10px 0; cursor: pointer; font-family: monospace; font-size: 24px; color: #2c3e50; border: 1px dashed #2c3e50; user-select: all; font-weight: bold; letter-spacing: 3px; }
-        
         #bot-toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(231, 76, 60, 0.95); color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; z-index: 5000; display: none; font-size: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .game-over-title { font-size: 30px; font-weight: 800; margin-bottom: 10px; }
+        .win-color { color: #27ae60; } .lose-color { color: #c0392b; }
     </style>
 </head>
 <body>
@@ -130,10 +117,10 @@
         <div class="modal-box">
             <h3 style="margin:0">CONTROLLO</h3>
             <div id="verify-text" style="margin:10px; color:#7f8c8d; font-size:14px;">L'avversario propone:</div>
-            <div class="duel-display" id="verify-display"></div>
+            <div class="duel-display" id="verify-display" style="margin-bottom: 20px;"></div>
             <div id="verify-buttons" class="btn-verify-group" style="display:none;">
-                <button class="btn-reject" onclick="sendVerification(false)">CONTESTA ❌</button>
-                <button class="btn-accept" onclick="sendVerification(true)">ACCETTA ✅</button>
+                <button class="btn-reject" onclick="rejectBotMove()">CONTESTA ❌</button>
+                <button class="btn-accept" onclick="acceptBotMove()">ACCETTA ✅</button>
             </div>
             <div id="verify-waiting" style="display:none; color:#7f8c8d; margin-top:20px;">In attesa dell'avversario...</div>
         </div>
@@ -243,7 +230,8 @@
     </div>
 
     <script>
-        const APP_PREFIX = "nabla-game-2025-v3-"; // Bump version to force fresh peers
+        /* CONFIG */
+        const APP_PREFIX = "nabla-game-2025-v4-"; 
         const peerConfig = {
             debug: 2,
             config: {
@@ -272,6 +260,7 @@
             "\\cos(x)": "cosx.png", "\\cos x": "cosx.png"
         };
 
+        /* STATE */
         let peer, conn;
         let isHost = false;
         let myIdShort = null;
@@ -288,7 +277,7 @@
         let targetSlotId = null; 
         let targetOwnerIsMe = false; 
         let firstSelection = null; 
-        let currentVerifyRequest = null; // Important: stores the math to apply if accepted
+        let currentVerifyRequest = null; 
 
         function initGameData(isCreator) {
             const initialField = [
@@ -364,7 +353,7 @@
                     updateUI();
                     break;
                 case 'REQUEST_VERIFY':
-                    currentVerifyRequest = data; // Save incoming request
+                    currentVerifyRequest = data; 
                     showVerifyModal(data.opCard, data.targetIndex, data.resultLatex, data.isSelfTarget);
                     break;
                 case 'VERIFY_RESULT':
@@ -381,6 +370,8 @@
                     break;
                 case 'TURN_CHANGE':
                     isMyTurn = true;
+                    // FIX SYNC: Quando ricevo, "senderField" (il campo del mittente) diventa il mio Opponent
+                    // "receiverField" (il campo del ricevente, cioè il mio) diventa il mio Player
                     opponentSlotsData = data.senderField; 
                     playerSlotsData = data.receiverField; 
                     opponentHandCount = data.handCount;
@@ -468,6 +459,7 @@
                             slot.classList.add('placable');
                             slot.onclick = () => performPlace(index);
                         }
+                        // ATTACCO: Permesso su carte non vuote, SIA mie che dell'avversario
                         else if (card.type !== 'empty' && handCard.type === 'op') {
                             slot.classList.add('targetable');
                             slot.onclick = () => handleAttackClick(index, isMine); 
@@ -563,25 +555,28 @@
         }
 
         function showVerifyModal(opCard, targetIdx, result, isSelfTarget) {
+            // FIX LOGICA SYNC: 
+            // Se isSelfTarget è true, il mittente ha colpito SE STESSO.
+            // Per il ricevente, "se stesso" del mittente corrisponde al campo OPPONENT.
             const targetCard = isSelfTarget ? opponentSlotsData[targetIdx] : playerSlotsData[targetIdx];
+            
             const display = document.getElementById('verify-display');
             display.innerHTML = '';
-            
             const imgOp = document.createElement('img'); imgOp.src = `img/${opCard.img}`; imgOp.style.width = '50px';
             display.appendChild(imgOp);
             display.innerHTML += " <span style='font-size:18px'>su</span> ";
             
-            if(targetCard.img) {
+            if(targetCard && targetCard.img) {
                 const imgT = document.createElement('img'); imgT.src = `img/${targetCard.img}`; imgT.style.width = '50px'; display.appendChild(imgT);
+            } else if (targetCard) {
+                const sp = document.createElement('span'); sp.innerHTML = `$$${targetCard.name}$$`; display.appendChild(sp);
             } else {
-                const sp = document.createElement('span'); 
-                sp.innerHTML = `$$${targetCard.name}$$`; 
-                display.appendChild(sp);
+                // Fallback se sync non perfetto
+                const sp = document.createElement('span'); sp.innerText = "Carta Sconosciuta"; display.appendChild(sp);
             }
             
             display.innerHTML += " <span style='font-size:18px'>=</span> ";
-            const resSpan = document.createElement('span'); 
-            resSpan.innerHTML = `$$${result}$$`; 
+            const resSpan = document.createElement('span'); resSpan.innerHTML = `$$${result}$$`; 
             display.appendChild(resSpan);
 
             document.getElementById('verify-buttons').style.display = 'flex';
@@ -593,7 +588,6 @@
 
         function sendVerification(approved) {
             document.getElementById('verify-modal').style.display = 'none';
-            // Important fix: send back the resultLatex stored from request
             const resToSend = currentVerifyRequest ? currentVerifyRequest.resultLatex : null;
             conn.send({ type: 'VERIFY_RESULT', approved: approved, resultLatex: resToSend });
         }
@@ -671,7 +665,17 @@
             while(myHandData.length < 5 && gameDeckCount > 0) { localDraw(); }
             isMyTurn = false;
             updateUI();
-            conn.send({ type: 'TURN_CHANGE', receiverField: playerSlotsData, senderField: opponentSlotsData, handCount: myHandData.length, deckCount: gameDeckCount });
+            
+            // INVIO STATO: 
+            // - senderField: Il MIO campo (che per l'altro sarà l'AVVERSARIO)
+            // - receiverField: Il campo dell'AVVERSARIO (che per l'altro sarà il SUO PLAYER)
+            conn.send({
+                type: 'TURN_CHANGE',
+                senderField: playerSlotsData, 
+                receiverField: opponentSlotsData, 
+                handCount: myHandData.length,
+                deckCount: gameDeckCount
+            });
             checkWin();
         }
 
