@@ -39,7 +39,7 @@
         .slot { width: 85px; height: 115px; border: 2px dashed rgba(236, 240, 241, 0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); transition: background 0.3s; }
         .slot.targetable { background: rgba(231, 76, 60, 0.2); border-color: #e74c3c; cursor: crosshair; } 
         .slot.placable { background: rgba(46, 204, 113, 0.2); border-color: #2ecc71; cursor: pointer; } 
-        .slot.pending-selection { background: rgba(52, 152, 219, 0.4); border-color: #3498db; }
+        .slot.pending-selection { background: rgba(52, 152, 219, 0.6); border-color: #3498db; box-shadow: 0 0 10px #3498db; }
         .slot-label { font-size: 10px; color: #bdc3c7; }
 
         .deck-container { display: flex; flex-direction: column; align-items: center; width: 80px; }
@@ -49,7 +49,6 @@
         .game-title { opacity: 0.2; color: white; font-size: 30px; margin: 0; font-weight: 800; letter-spacing: 3px; }
         .turn-badge { background: #3498db; color: white; padding: 5px 15px; border-radius: 15px; font-size: 12px; font-weight: bold; z-index: 10; transition: background 0.3s; text-align: center; }
         .turn-badge.opponent-turn { background: #e74c3c; }
-        
         .controls-container { width: 80px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
         .btn-game { padding: 8px 5px; font-weight: bold; border: none; border-radius: 20px; cursor: pointer; color: white; box-shadow: 0 3px 0 rgba(0,0,0,0.2); font-size: 10px; text-transform: uppercase; font-family: 'Varela Round'; width: 100%; }
         .btn-pass { background: #2980b9; } .btn-pass:hover { background: #3498db; }
@@ -62,11 +61,9 @@
         .btn-create { background: #27ae60; color: white; }
         .btn-join { background: #2980b9; color: white; }
         .lobby-input { padding: 15px; font-size: 24px; border-radius: 8px; border: 1px solid #ccc; width: 80%; margin-top: 10px; text-align: center; font-family: 'Varela Round'; letter-spacing: 5px; font-weight: bold; }
-        
         .btn-verify-group { display: flex; gap: 10px; margin-top: 15px; width: 100%; justify-content: center; }
         .btn-accept, .btn-reject { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Varela Round'; font-size: 14px; color: white; width: 45%; }
         .btn-accept { background: #27ae60; } .btn-reject { background: #c0392b; }
-
         #calc-modal { z-index: 4000; }
         .duel-display { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 10px 0; font-size: 20px; color: #2c3e50; flex-wrap: wrap; }
         math-field { width: 90%; font-size: 24px; padding: 8px; border: 2px solid #bdc3c7; border-radius: 8px; background: #fff; margin-bottom: 10px; outline: none; }
@@ -239,7 +236,7 @@
     </div>
 
     <script>
-        const APP_PREFIX = "nabla-game-2025-v6-"; 
+        const APP_PREFIX = "nabla-game-2025-v7-"; 
         const peerConfig = {
             debug: 2,
             config: {
@@ -283,6 +280,8 @@
         let discardMode = false;
         let targetSlotId = null; 
         let targetOwnerIsMe = false; 
+        
+        // Binary Op Vars
         let firstSelection = null; 
         let pendingLocalMove = null; 
         let currentVerifyRequest = null; 
@@ -362,7 +361,8 @@
                     break;
                 case 'REQUEST_VERIFY':
                     currentVerifyRequest = data; 
-                    showVerifyModal(data.opCard, data.targetIndex, data.resultLatex, data.isSelfTarget);
+                    // Handle Binary Visuals: if card2 is present
+                    showVerifyModal(data.opCard, data.targetIndex, data.resultLatex, data.isSelfTarget, data.card2Data);
                     break;
                 case 'VERIFY_RESULT':
                     document.getElementById('verify-modal').style.display = 'none';
@@ -374,16 +374,15 @@
                             pendingLocalMove = null;
                         }
                     } else {
-                        alert("Contestazione! Hai perso il turno.");
+                        alert("Contestazione! Mossa annullata.");
                         selectedHandCardId = null;
                         pendingLocalMove = null;
-                        // Penalty: Pass turn immediately without doing anything
+                        firstSelection = null;
                         sendStateAndPass();
                     }
                     break;
                 case 'TURN_CHANGE':
                     isMyTurn = true;
-                    // FIX SYNC: Invert fields
                     opponentSlotsData = data.senderField; 
                     playerSlotsData = data.receiverField; 
                     opponentHandCount = data.handCount;
@@ -473,6 +472,9 @@
                         }
                         else if (card.type !== 'empty' && handCard.type === 'op') {
                             slot.classList.add('targetable');
+                            if(firstSelection && firstSelection.index === index && firstSelection.isMine === isMine) {
+                                slot.classList.add('pending-selection');
+                            }
                             slot.onclick = () => handleAttackClick(index, isMine); 
                         }
                     }
@@ -518,27 +520,64 @@
         }
 
         function handleAttackClick(index, isMine) {
-            targetOwnerIsMe = isMine; 
             const handCard = myHandData.find(c => c.id === selectedHandCardId);
-            if(handCard.isBinary) { alert("Operatori binari disabilitati in questa versione veloce."); } 
-            else { openCalculationModal(index); }
+            if(handCard.isBinary) {
+                // BINARY LOGIC
+                if(!firstSelection) {
+                    firstSelection = { index: index, isMine: isMine };
+                    updateUI(); // Redraw to show selection
+                } else {
+                    // Second selection -> Open Modal
+                    targetOwnerIsMe = isMine; // Target for result placement (2nd card)
+                    openCalculationModal(index, true); 
+                }
+            } else {
+                targetOwnerIsMe = isMine; 
+                openCalculationModal(index, false); 
+            }
         }
 
-        function openCalculationModal(targetIdx) {
+        function openCalculationModal(targetIdx, isBinary) {
             targetSlotId = targetIdx;
             const handCard = myHandData.find(c => c.id === selectedHandCardId);
+            
+            // Current Target (2nd if binary)
             const targetCard = targetOwnerIsMe ? playerSlotsData[targetIdx] : opponentSlotsData[targetIdx];
             
             const display = document.getElementById('duel-images');
             display.innerHTML = '';
-            const imgOp = document.createElement('img'); imgOp.src = `img/${handCard.img}`; imgOp.style.width = '70px';
-            display.appendChild(imgOp);
-            display.innerHTML += " <span style='font-size:20px; margin:0 10px'>SU</span> ";
-            if(targetCard.img) {
-                const imgT = document.createElement('img'); imgT.src = `img/${targetCard.img}`; imgT.style.width = '70px'; display.appendChild(imgT);
+            
+            if(isBinary && firstSelection) {
+                // Get First Card
+                const firstList = firstSelection.isMine ? playerSlotsData : opponentSlotsData;
+                const firstCard = firstList[firstSelection.index];
+                
+                // Render: Card1 + Op + Card2
+                if(firstCard.img) { const i = document.createElement('img'); i.src=`img/${firstCard.img}`; i.style.width='50px'; display.appendChild(i); }
+                else { const s = document.createElement('span'); s.innerHTML=`$$${firstCard.name}$$`; display.appendChild(s); }
+                
+                display.innerHTML += " <span style='margin:0 5px'> </span> ";
+                
+                const imgOp = document.createElement('img'); imgOp.src = `img/${handCard.img}`; imgOp.style.width = '50px';
+                display.appendChild(imgOp);
+                
+                display.innerHTML += " <span style='margin:0 5px'> </span> ";
+                
+                if(targetCard.img) { const i = document.createElement('img'); i.src=`img/${targetCard.img}`; i.style.width='50px'; display.appendChild(i); }
+                else { const s = document.createElement('span'); s.innerHTML=`$$${targetCard.name}$$`; display.appendChild(s); }
+                
             } else {
-                const sp = document.createElement('span'); sp.innerHTML = `$$${targetCard.name}$$`; display.appendChild(sp);
+                // Unary
+                const imgOp = document.createElement('img'); imgOp.src = `img/${handCard.img}`; imgOp.style.width = '70px';
+                display.appendChild(imgOp);
+                display.innerHTML += " <span style='font-size:20px; margin:0 10px'>SU</span> ";
+                if(targetCard.img) {
+                    const imgT = document.createElement('img'); imgT.src = `img/${targetCard.img}`; imgT.style.width = '70px'; display.appendChild(imgT);
+                } else {
+                    const sp = document.createElement('span'); sp.innerHTML = `$$${targetCard.name}$$`; display.appendChild(sp);
+                }
             }
+            
             mf.setValue('');
             document.getElementById('calc-modal').style.display = 'flex';
             if(window.MathJax) MathJax.typeset();
@@ -550,7 +589,7 @@
             document.getElementById('calc-modal').style.display = 'none';
             const handCard = myHandData.find(c => c.id === selectedHandCardId);
             
-            pendingLocalMove = { result: resultLatex }; // Save locally
+            pendingLocalMove = { result: resultLatex }; 
 
             document.getElementById('verify-modal').style.display = 'flex';
             document.getElementById('verify-buttons').style.display = 'none';
@@ -558,30 +597,46 @@
             document.getElementById('verify-text').innerText = "Inviato per approvazione...";
             document.getElementById('verify-display').innerText = "";
 
+            // Prepare extra data for binary visual
+            let card2Data = null;
+            if(firstSelection) {
+                const list = firstSelection.isMine ? playerSlotsData : opponentSlotsData;
+                card2Data = list[firstSelection.index];
+            }
+
             conn.send({
                 type: 'REQUEST_VERIFY',
                 opCard: handCard,
                 targetIndex: targetSlotId,
                 resultLatex: resultLatex,
-                isSelfTarget: targetOwnerIsMe 
+                isSelfTarget: targetOwnerIsMe,
+                card2Data: card2Data // Send first card info if binary
             });
         }
 
-        function showVerifyModal(opCard, targetIdx, result, isSelfTarget) {
-            // FIX SYNC logic for receiver:
-            // if sender target self (his player slots), that means my opponent slots
+        function showVerifyModal(opCard, targetIdx, result, isSelfTarget, card2Data) {
+            // isSelfTarget = true means Sender targeted their own field (Opponent for me)
             const targetCard = isSelfTarget ? opponentSlotsData[targetIdx] : playerSlotsData[targetIdx];
             
             const display = document.getElementById('verify-display');
             display.innerHTML = '';
-            const imgOp = document.createElement('img'); imgOp.src = `img/${opCard.img}`; imgOp.style.width = '50px';
-            display.appendChild(imgOp);
-            display.innerHTML += " <span style='font-size:18px'>su</span> ";
             
-            if(targetCard && targetCard.img) {
-                const imgT = document.createElement('img'); imgT.src = `img/${targetCard.img}`; imgT.style.width = '50px'; display.appendChild(imgT);
-            } else if (targetCard) {
-                const sp = document.createElement('span'); sp.innerHTML = `$$${targetCard.name}$$`; display.appendChild(sp);
+            if(card2Data) {
+                // Binary Visual
+                if(card2Data.img) { const i = document.createElement('img'); i.src=`img/${card2Data.img}`; i.style.width='50px'; display.appendChild(i); }
+                else { const s = document.createElement('span'); s.innerHTML=`$$${card2Data.name}$$`; display.appendChild(s); }
+                
+                const imgOp = document.createElement('img'); imgOp.src = `img/${opCard.img}`; imgOp.style.width = '50px'; display.appendChild(imgOp);
+                
+                if(targetCard.img) { const i = document.createElement('img'); i.src=`img/${targetCard.img}`; i.style.width='50px'; display.appendChild(i); }
+                else { const s = document.createElement('span'); s.innerHTML=`$$${targetCard.name}$$`; display.appendChild(s); }
+            
+            } else {
+                // Unary Visual
+                const imgOp = document.createElement('img'); imgOp.src = `img/${opCard.img}`; imgOp.style.width = '50px'; display.appendChild(imgOp);
+                display.innerHTML += " <span style='font-size:18px'>su</span> ";
+                if(targetCard.img) { const i = document.createElement('img'); i.src=`img/${targetCard.img}`; i.style.width='50px'; display.appendChild(i); }
+                else { const s = document.createElement('span'); s.innerHTML=`$$${targetCard.name}$$`; display.appendChild(s); }
             }
             
             display.innerHTML += " <span style='font-size:18px'>=</span> ";
@@ -601,6 +656,7 @@
         }
 
         function applyMyMove(resultLatex) {
+            // Logic: Result goes to Target Slot. If Binary, First Slot is emptied.
             const targetList = targetOwnerIsMe ? playerSlotsData : opponentSlotsData;
             const containerId = targetOwnerIsMe ? 'player-slots' : 'opponent-slots';
 
@@ -608,6 +664,12 @@
             let newImage = null;
             for (const [key, value] of Object.entries(cardDatabase)) {
                 if (key.replace(/\s/g, '') === searchKey.replace(/\s/g, '')) { newImage = value; break; }
+            }
+
+            // Handle Binary First Slot Clearing
+            if (firstSelection) {
+                const firstList = firstSelection.isMine ? playerSlotsData : opponentSlotsData;
+                firstList[firstSelection.index] = { type: 'empty' };
             }
 
             if (searchKey === '0' || searchKey === '\\infty' || searchKey === 'infinity') {
@@ -631,6 +693,7 @@
             selectedHandCardId = null; 
             targetSlotId = null;
             targetOwnerIsMe = false;
+            firstSelection = null; // Reset binary
             sendStateAndPass();
         }
 
@@ -673,7 +736,6 @@
             while(myHandData.length < 5 && gameDeckCount > 0) { localDraw(); }
             isMyTurn = false;
             updateUI();
-            
             conn.send({
                 type: 'TURN_CHANGE',
                 senderField: playerSlotsData, 
