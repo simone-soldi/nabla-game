@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
 
     <script src="https://unpkg.com/mathlive"></script>
@@ -15,16 +14,18 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <style>
+        /* STILE GENERALE */
         body { background-color: #34495e; font-family: 'Varela Round', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; color: #ecf0f1; overflow: hidden; user-select: none; }
         
-        /* Layout Mobile Friendly */
+        /* LAYOUT */
         #opponent-area { flex: 1; border-bottom: 2px dashed rgba(189, 195, 199, 0.2); display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.15); padding: 5px 0; gap: 2px; }
         #battlefield { flex: 0.6; display: flex; justify-content: space-between; align-items: center; position: relative; padding: 0 20px; background: rgba(0,0,0,0.05); }
         #player-area { flex: 1.6; border-top: 2px dashed rgba(189, 195, 199, 0.2); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 40px; background: rgba(0,0,0,0.15); }
 
         .section-label { font-size: 10px; color: #bdc3c7; text-transform: uppercase; letter-spacing: 1px; text-align: center; width: 100%; margin: 2px 0; opacity: 0.8; font-weight: bold; }
 
-        .card { width: 70px; height: 100px; background-color: #fdfdfd; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin: 3px; color: #2c3e50; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s; border: 1px solid #bdc3c7; position: relative; overflow: hidden; }
+        /* CARTE */
+        .card { width: 75px; height: 105px; background-color: #fdfdfd; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin: 3px; color: #2c3e50; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: transform 0.2s; border: 1px solid #bdc3c7; position: relative; overflow: hidden; }
         .card.selected { border: 3px solid #f1c40f; transform: translateY(-10px); }
         .card.discard-target { border: 3px dashed #e74c3c; animation: pulse-red 1s infinite; }
         .card-image, .card-bg-layer { width: 100%; height: 100%; object-fit: fill; position: absolute; top: 0; left: 0; }
@@ -39,16 +40,17 @@
 
         .hand { display: flex; justify-content: center; gap: -2px; min-height: 110px; width: 100%; }
         .slots { display: flex; gap: 8px; margin-bottom: 5px; align-items: center; justify-content: center; width: 100%; }
-        .slot { width: 80px; height: 110px; border: 2px dashed rgba(236, 240, 241, 0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); transition: background 0.3s; }
-        .slot.targetable { background: rgba(231, 76, 60, 0.2); border-color: #e74c3c; } 
-        .slot.placable { background: rgba(46, 204, 113, 0.2); border-color: #2ecc71; } 
+        .slot { width: 85px; height: 115px; border: 2px dashed rgba(236, 240, 241, 0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.05); transition: background 0.3s; }
+        .slot.targetable { background: rgba(231, 76, 60, 0.2); border-color: #e74c3c; cursor: crosshair; } 
+        .slot.placable { background: rgba(46, 204, 113, 0.2); border-color: #2ecc71; cursor: pointer; } 
         .slot.pending-selection { background: rgba(52, 152, 219, 0.4); border-color: #3498db; }
         .slot-label { font-size: 10px; color: #bdc3c7; }
 
+        /* CENTRAL */
         .deck-container { display: flex; flex-direction: column; align-items: center; width: 80px; }
-        .deck-pile { width: 60px; height: 85px; background-color: #fff; border-radius: 6px; display: flex; justify-content: center; align-items: center; box-shadow: 2px 2px 0 #2c3e50; border: 1px solid #bdc3c7; }
+        .deck-pile { width: 65px; height: 90px; background-color: #fff; border-radius: 6px; display: flex; justify-content: center; align-items: center; box-shadow: 2px 2px 0 #2c3e50; border: 1px solid #bdc3c7; }
         .deck-count { font-size: 12px; margin-top: 5px; font-weight: bold; }
-
+        
         .game-info { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 5px; }
         .game-title { opacity: 0.2; color: white; font-size: 30px; margin: 0; font-weight: 800; letter-spacing: 3px; }
         .turn-badge { background: #3498db; color: white; padding: 5px 15px; border-radius: 15px; font-size: 12px; font-weight: bold; z-index: 10; transition: background 0.3s; text-align: center; }
@@ -60,19 +62,20 @@
         .btn-discard { background: #c0392b; } .btn-discard:hover { background: #e74c3c; }
         .btn-game:disabled { background: #95a5a6; cursor: not-allowed; box-shadow: none; opacity: 0.7; }
 
+        /* MODALS */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(44, 62, 80, 0.98); z-index: 3000; justify-content: center; align-items: center; flex-direction: column; }
         .modal-box { background: #ecf0f1; color: #2c3e50; padding: 20px; border-radius: 15px; text-align: center; width: 90%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; }
         
         .lobby-btn { width: 100%; padding: 15px; margin: 10px 0; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; font-weight: bold; font-family: 'Varela Round'; }
         .btn-create { background: #27ae60; color: white; }
         .btn-join { background: #2980b9; color: white; }
-        .lobby-input { padding: 15px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; width: 90%; margin-top: 10px; text-align: center; font-family: 'Varela Round'; }
+        .lobby-input { padding: 15px; font-size: 24px; border-radius: 8px; border: 1px solid #ccc; width: 80%; margin-top: 10px; text-align: center; font-family: 'Varela Round'; letter-spacing: 5px; font-weight: bold; }
 
         .btn-verify-group { display: flex; gap: 10px; margin-top: 15px; width: 100%; justify-content: center; }
         .btn-accept, .btn-reject { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-family: 'Varela Round'; font-size: 14px; color: white; width: 45%; }
         .btn-accept { background: #27ae60; } .btn-reject { background: #c0392b; }
 
-        /* TASTIERA E CALCOLO */
+        /* TASTIERA & CALCOLO */
         #calc-modal { z-index: 4000; }
         .duel-display { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 10px 0; font-size: 20px; color: #2c3e50; flex-wrap: wrap; }
         math-field { width: 90%; font-size: 24px; padding: 8px; border: 2px solid #bdc3c7; border-radius: 8px; background: #fff; margin-bottom: 10px; outline: none; }
@@ -90,7 +93,8 @@
 
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 15px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #copy-id-area { background: rgba(0,0,0,0.1); padding: 10px; border-radius: 5px; margin: 10px 0; cursor: pointer; font-family: monospace; font-size: 16px; color: #2c3e50; border: 1px dashed #2c3e50; user-select: all; }
+        
+        #copy-id-area { background: rgba(0,0,0,0.1); padding: 10px; border-radius: 5px; margin: 10px 0; cursor: pointer; font-family: monospace; font-size: 24px; color: #2c3e50; border: 1px dashed #2c3e50; user-select: all; font-weight: bold; letter-spacing: 3px; }
         
         #bot-toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(231, 76, 60, 0.95); color: white; padding: 8px 15px; border-radius: 20px; font-weight: bold; z-index: 5000; display: none; font-size: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
     </style>
@@ -105,15 +109,14 @@
             <div id="lobby-controls" style="width:100%;">
                 <button class="lobby-btn btn-create" onclick="createGame()">CREA PARTITA</button>
                 <div style="margin: 10px;">oppure</div>
-                <input type="text" id="join-id-input" class="lobby-input" placeholder="Incolla ID qui">
+                <input type="number" id="join-id-input" class="lobby-input" placeholder="Codice 6 Cifre">
                 <button class="lobby-btn btn-join" onclick="joinGame()">UNISCITI</button>
             </div>
             
             <div id="waiting-screen" style="display:none; width:100%;">
                 <h3>In attesa dell'avversario...</h3>
-                <p>Manda questo codice al tuo amico:</p>
-                <div id="copy-id-area" onclick="copyId()">Generazione ID...</div>
-                <div style="font-size: 12px; color:#7f8c8d;">(Toccami per copiare)</div>
+                <p>Comunica questo codice:</p>
+                <div id="copy-id-area" onclick="copyId()">...</div>
                 <div class="loader"></div>
                 <button onclick="location.reload()" style="margin-top:10px; background:none; border:none; text-decoration:underline; cursor:pointer; color:#c0392b;">Annulla</button>
             </div>
@@ -122,9 +125,9 @@
     </div>
 
     <div id="game-over-modal" class="modal-overlay">
-        <div class="modal-box">
-            <div id="game-over-title" style="font-size:30px; font-weight:800;">HAI VINTO!</div>
-            <div id="game-over-message">Partita terminata.</div>
+        <div class="modal-box" style="width: 400px;">
+            <div id="game-over-title" class="game-over-title">HAI VINTO!</div>
+            <div id="game-over-message" style="font-size: 18px; color: #7f8c8d;">Partita terminata.</div>
             <button class="lobby-btn btn-join" onclick="location.reload()">MENU PRINCIPALE</button>
         </div>
     </div>
@@ -248,8 +251,8 @@
     </div>
 
     <script>
-        /* CONFIGURAZIONE PEERJS PER MOBILE */
-        // Usiamo i server STUN di Google per aggirare i problemi di connessione Mobile/PC
+        /* CONFIG */
+        const APP_PREFIX = "nabla-game-2025-v1-"; // Namespace univoco
         const peerConfig = {
             debug: 2,
             config: {
@@ -278,10 +281,10 @@
             "\\cos(x)": "cosx.png", "\\cos x": "cosx.png"
         };
 
-        /* PEERJS & GAME STATE */
+        /* STATE */
         let peer, conn;
         let isHost = false;
-        let myId = null;
+        let myIdShort = null;
         
         let myHandData = [];
         let playerSlotsData = [];
@@ -292,8 +295,9 @@
         let isMyTurn = false;
         let selectedHandCardId = null;
         let discardMode = false;
-        let targetSlotId = null; // Fix: Dichiarato globale per non perderlo
-        let firstSelection = null; // Fix: Per i binari
+        let targetSlotId = null; 
+        let targetOwnerIsMe = false; // NUOVO: Traccia se mi sto colpendo da solo
+        let firstSelection = null; 
 
         function initGameData(isCreator) {
             const initialField = [
@@ -327,16 +331,18 @@
             document.getElementById('lobby-controls').style.display = 'none';
             document.getElementById('waiting-screen').style.display = 'block';
             
-            peer = new Peer(peerConfig);
+            // Genera ID corto numerico
+            myIdShort = Math.floor(100000 + Math.random() * 900000);
+            
+            peer = new Peer(APP_PREFIX + myIdShort, peerConfig);
             
             peer.on('open', (id) => {
-                myId = id;
-                document.getElementById('copy-id-area').innerText = id;
+                document.getElementById('copy-id-area').innerText = myIdShort;
                 initGameData(true);
             });
 
             peer.on('error', (err) => {
-                document.getElementById('connection-error').innerText = "Errore Connessione: " + err.type;
+                document.getElementById('connection-error').innerText = "Errore: " + err.type;
                 document.getElementById('connection-error').style.display = 'block';
             });
 
@@ -350,24 +356,24 @@
                         deckCount: window.initialStateForClient.deckCount
                     });
                     document.getElementById('lobby-modal').style.display = 'none';
-                }, 1000); // Ritardo per stabilità connessione
+                }, 1000);
             });
         }
 
         function joinGame() {
-            const hostId = document.getElementById('join-id-input').value.trim();
-            if(!hostId) return alert("Inserisci un ID!");
+            const inputId = document.getElementById('join-id-input').value.trim();
+            if(inputId.length !== 6) return alert("Il codice deve essere di 6 numeri.");
             
             isHost = false;
-            peer = new Peer(peerConfig);
+            peer = new Peer(peerConfig); // ID automatico per il client
             
             peer.on('error', (err) => {
-                alert("Errore: " + err.type + ". Controlla l'ID o la rete.");
+                alert("Impossibile connettersi. Verifica il codice.");
             });
 
             peer.on('open', () => {
-                document.getElementById('lobby-controls').innerHTML = "Connessione in corso...";
-                conn = peer.connect(hostId);
+                document.getElementById('lobby-controls').innerHTML = "Connessione...";
+                conn = peer.connect(APP_PREFIX + inputId);
                 setupConnection();
             });
         }
@@ -377,19 +383,12 @@
                 handleNetworkData(data);
             });
             conn.on('open', () => {
-                if(!isHost) console.log("Connesso all'host!");
+                if(!isHost) console.log("Connesso!");
             });
         }
 
         function copyId() {
-            if(myId) {
-                navigator.clipboard.writeText(myId).then(() => {
-                    const el = document.getElementById('copy-id-area');
-                    const orig = el.innerText;
-                    el.innerText = "COPIATO!";
-                    setTimeout(() => el.innerText = orig, 1500);
-                });
-            }
+            navigator.clipboard.writeText(myIdShort).then(() => alert("Copiato!"));
         }
 
         /* RETE */
@@ -399,20 +398,13 @@
                     initGameData(false);
                     myHandData = data.hand;
                     gameDeckCount = data.deckCount;
-                    isMyTurn = false;
+                    isMyTurn = false; 
                     document.getElementById('lobby-modal').style.display = 'none';
                     updateUI();
                     break;
 
-                case 'UPDATE_STATE':
-                    opponentSlotsData = data.playerSlots;
-                    opponentHandCount = data.handCount;
-                    gameDeckCount = data.deckCount;
-                    updateUI();
-                    break;
-
                 case 'REQUEST_VERIFY':
-                    showVerifyModal(data.opCard, data.targetIndex, data.resultLatex);
+                    showVerifyModal(data.opCard, data.targetIndex, data.resultLatex, data.isSelfTarget);
                     break;
 
                 case 'VERIFY_RESULT':
@@ -430,7 +422,9 @@
 
                 case 'TURN_CHANGE':
                     isMyTurn = true;
-                    if(data.updatedField) opponentSlotsData = data.updatedField;
+                    // L'avversario mi manda il suo campo (che per me è opponent) e il mio campo aggiornato (se mi ha colpito)
+                    opponentSlotsData = data.senderField; // Il suo campo
+                    playerSlotsData = data.receiverField; // Il mio campo (potrebbe essere cambiato)
                     opponentHandCount = data.handCount;
                     gameDeckCount = data.deckCount;
                     checkWin();
@@ -443,7 +437,7 @@
             }
         }
 
-        /* GIOCO */
+        /* LOGICA DI GIOCO */
         function createDeck() {
             let deck = [];
             for(let i=0; i<8; i++) deck.push({ type: 'op', name: 'Derivata', img: 'derivata.png' });
@@ -481,6 +475,7 @@
                 handDiv.appendChild(el);
             });
 
+            // IsMine = true per il player, false per opponent
             renderSlots('player-slots', playerSlotsData, true);
             renderSlots('opponent-slots', opponentSlotsData, false);
 
@@ -512,21 +507,20 @@
                 const slot = document.createElement('div');
                 slot.className = 'slot';
                 
-                if (isMine && isMyTurn && !discardMode) {
-                    if (card.type === 'empty' && selectedHandCardId) {
-                        const handCard = myHandData.find(c => c.id === selectedHandCardId);
-                        if (handCard && handCard.type === 'func') {
+                // Logica Click Slot
+                if (isMyTurn && !discardMode) {
+                    const handCard = myHandData.find(c => c.id === selectedHandCardId);
+                    if (handCard) {
+                        // PIAZZAMENTO (Solo sui miei slot vuoti)
+                        if (isMine && card.type === 'empty' && handCard.type === 'func') {
                             slot.classList.add('placable');
                             slot.onclick = () => performPlace(index);
                         }
-                    }
-                } else if (!isMine && isMyTurn && !discardMode) {
-                    if (card.type !== 'empty' && selectedHandCardId) {
-                        const handCard = myHandData.find(c => c.id === selectedHandCardId);
-                        if (handCard && handCard.type === 'op') {
+                        // ATTACCO (Sui miei O su quelli avversari se non vuoti)
+                        else if (card.type !== 'empty' && handCard.type === 'op') {
+                            // Se è operatore, posso colpire chiunque abbia carte
                             slot.classList.add('targetable');
-                            if (firstSelection && firstSelection.index === index) slot.classList.add('pending-selection');
-                            slot.onclick = () => handleAttackClick(index); // Separata funzione
+                            slot.onclick = () => handleAttackClick(index, isMine); // Passo isMine per sapere chi colpisco
                         }
                     }
                 }
@@ -540,7 +534,7 @@
         function createCardElement(cardData, isFaceDown = false, location = 'table') {
             const div = document.createElement('div');
             div.className = 'card';
-            if(location === 'hand') div.id = `card-${cardData.id}`; // ID per animazione
+            if(location === 'hand') div.id = `card-${cardData.id}`; 
 
             if (isFaceDown) {
                 div.innerHTML = `<img src="img/retro.png" class="card-image"><div class="card-back"></div>`;
@@ -572,15 +566,12 @@
             sendStateAndPass();
         }
 
-        function handleAttackClick(index) {
+        function handleAttackClick(index, isMine) {
+            targetOwnerIsMe = isMine; // Salvo se sto colpendo me stesso
             const handCard = myHandData.find(c => c.id === selectedHandCardId);
             if(handCard.isBinary) {
-                if(!firstSelection) {
-                    firstSelection = { index: index };
-                    updateUI();
-                } else {
-                    openCalculationModalBinary(index);
-                }
+                // Logica binaria non implementata full per brevità in questa versione
+                alert("Operatori binari disabilitati in questa versione veloce.");
             } else {
                 openCalculationModal(index);
             }
@@ -589,17 +580,19 @@
         function openCalculationModal(targetIdx) {
             targetSlotId = targetIdx;
             const handCard = myHandData.find(c => c.id === selectedHandCardId);
-            const targetCard = opponentSlotsData[targetIdx];
+            
+            // Se colpisco me stesso uso playerSlots, altrimenti opponentSlots
+            const targetCard = targetOwnerIsMe ? playerSlotsData[targetIdx] : opponentSlotsData[targetIdx];
             
             const display = document.getElementById('duel-images');
             display.innerHTML = '';
             
-            const imgOp = document.createElement('img'); imgOp.src = `img/${handCard.img}`; imgOp.style.width = '60px';
+            const imgOp = document.createElement('img'); imgOp.src = `img/${handCard.img}`; imgOp.style.width = '70px';
             display.appendChild(imgOp);
             display.innerHTML += " <span style='font-size:20px; margin:0 10px'>SU</span> ";
             
             if(targetCard.img) {
-                const imgT = document.createElement('img'); imgT.src = `img/${targetCard.img}`; imgT.style.width = '60px'; display.appendChild(imgT);
+                const imgT = document.createElement('img'); imgT.src = `img/${targetCard.img}`; imgT.style.width = '70px'; display.appendChild(imgT);
             } else {
                 const sp = document.createElement('span'); sp.innerHTML = `$$${targetCard.name}$$`; display.appendChild(sp);
             }
@@ -607,23 +600,6 @@
             mf.setValue('');
             document.getElementById('calc-modal').style.display = 'flex';
             if(window.MathJax) MathJax.typeset();
-        }
-
-        function openCalculationModalBinary(secondIdx) {
-            targetSlotId = secondIdx; // Il risultato va sul secondo
-            const handCard = myHandData.find(c => c.id === selectedHandCardId);
-            const card1 = opponentSlotsData[firstSelection.index];
-            const card2 = opponentSlotsData[secondIdx];
-            
-            // Logica binaria non pienamente supportata nella V19 lite (richiede logica complessa di ID), 
-            // ma qui apriamo comunque la modale per permettere il calcolo manuale.
-            const display = document.getElementById('duel-images');
-            display.innerHTML = '';
-            // Visualizzazione semplice
-            const sp = document.createElement('span'); sp.innerText = "Operazione Binaria"; display.appendChild(sp);
-            
-            mf.setValue('');
-            document.getElementById('calc-modal').style.display = 'flex';
         }
 
         function confirmCalculation() {
@@ -643,12 +619,17 @@
                 type: 'REQUEST_VERIFY',
                 opCard: handCard,
                 targetIndex: targetSlotId,
-                resultLatex: resultLatex
+                resultLatex: resultLatex,
+                isSelfTarget: targetOwnerIsMe // Dico all'altro chi sto colpendo
             });
         }
 
-        function showVerifyModal(opCard, targetIdx, result) {
-            const targetCard = playerSlotsData[targetIdx];
+        // MOSTRA MODALE A CHI RICEVE (L'AVVERSARIO)
+        function showVerifyModal(opCard, targetIdx, result, isSelfTarget) {
+            // Se l'altro dice isSelfTarget=true, sta colpendo le SUE carte (che per me sono opponentSlots)
+            // Se isSelfTarget=false, sta colpendo le MIE carte (che per me sono playerSlots)
+            const targetCard = isSelfTarget ? opponentSlotsData[targetIdx] : playerSlotsData[targetIdx];
+            
             const display = document.getElementById('verify-display');
             display.innerHTML = '';
             
@@ -666,6 +647,7 @@
 
             document.getElementById('verify-buttons').style.display = 'flex';
             document.getElementById('verify-waiting').style.display = 'none';
+            document.getElementById('verify-text').innerText = "L'avversario propone:";
             document.getElementById('verify-modal').style.display = 'flex';
             
             if(window.MathJax) MathJax.typeset();
@@ -673,16 +655,15 @@
 
         function sendVerification(approved) {
             document.getElementById('verify-modal').style.display = 'none';
-            conn.send({ type: 'VERIFY_RESULT', approved: approved });
-            
-            if(approved) {
-                // Aggiorna subito il mio tavolo (subisco)
-                // Ma per sincronia perfetta, aspettiamo che l'attaccante mandi TURN_CHANGE con i dati
-            }
+            conn.send({ type: 'VERIFY_RESULT', approved: approved, resultLatex: pendingMove ? pendingMove.result : null });
         }
 
         function applyMyMove(resultLatex) {
-            const targetList = opponentSlotsData;
+            // Se targetOwnerIsMe -> modifico playerSlots
+            // Se targetOwnerIsMe FALSE -> modifico opponentSlots
+            const targetList = targetOwnerIsMe ? playerSlotsData : opponentSlotsData;
+            const containerId = targetOwnerIsMe ? 'player-slots' : 'opponent-slots';
+
             let searchKey = resultLatex.replace(/\s/g, '').trim(); 
             let newImage = null;
             for (const [key, value] of Object.entries(cardDatabase)) {
@@ -690,28 +671,26 @@
             }
 
             if (searchKey === '0' || searchKey === '\\infty' || searchKey === 'infinity') {
-                // Animazione (sul DOM avversario locale)
-                const slotDiv = document.getElementById('opponent-slots').children[targetSlotId];
+                const slotDiv = document.getElementById(containerId).children[targetSlotId];
                 const cardDiv = slotDiv.querySelector('.card');
                 if(cardDiv) cardDiv.classList.add('destroy-anim');
                 
                 setTimeout(() => {
                     targetList[targetSlotId] = { type: 'empty' };
-                    // Se binario, svuota anche il primo
-                    if(firstSelection) targetList[firstSelection.index] = { type: 'empty' };
                     finalizeMove();
                 }, 600);
             } else {
                 targetList[targetSlotId].name = resultLatex;
                 targetList[targetSlotId].img = newImage;
-                if(firstSelection) targetList[firstSelection.index] = { type: 'empty' };
                 finalizeMove();
             }
         }
 
         function finalizeMove() {
             myHandData = myHandData.filter(c => c.id !== selectedHandCardId);
-            selectedHandCardId = null; firstSelection = null;
+            selectedHandCardId = null; 
+            targetSlotId = null;
+            targetOwnerIsMe = false;
             sendStateAndPass();
         }
 
@@ -736,11 +715,8 @@
             const deckEl = document.getElementById('deck-display');
             
             if(cardEl && deckEl) {
-                // Animazione visiva
                 const cRect = cardEl.getBoundingClientRect();
                 const dRect = deckEl.getBoundingClientRect();
-                
-                // Clone per animazione
                 const clone = cardEl.cloneNode(true);
                 clone.style.position = 'fixed';
                 clone.style.left = cRect.left + 'px';
@@ -748,11 +724,8 @@
                 clone.style.margin = '0';
                 clone.classList.add('discarding-anim');
                 document.body.appendChild(clone);
-                
-                // Nascondi originale
                 cardEl.style.opacity = 0;
 
-                // Trigger anim
                 setTimeout(() => {
                     clone.style.left = dRect.left + 'px';
                     clone.style.top = dRect.top + 'px';
@@ -769,12 +742,6 @@
                     document.getElementById('btn-discard').style.background = "#c0392b";
                     sendStateAndPass();
                 }, 800);
-            } else {
-                // Fallback
-                myHandData = myHandData.filter(c => c.id !== cardData.id);
-                localDraw();
-                discardMode = false;
-                sendStateAndPass();
             }
         }
 
@@ -786,14 +753,16 @@
             while(myHandData.length < 5 && gameDeckCount > 0) {
                 localDraw();
             }
-            
             isMyTurn = false;
             updateUI();
             
             conn.send({
                 type: 'TURN_CHANGE',
-                updatedField: playerSlotsData, 
-                playerSlots: opponentSlotsData, 
+                // Mando il MIO stato del campo.
+                // IMPORTANTE: receiverField = quello che IO vedo come MIO, per l'altro sarà OPPONENT.
+                // senderField = quello che IO vedo come OPPONENT, per l'altro sarà PLAYER.
+                receiverField: playerSlotsData,  
+                senderField: opponentSlotsData, 
                 handCount: myHandData.length,
                 deckCount: gameDeckCount
             });
