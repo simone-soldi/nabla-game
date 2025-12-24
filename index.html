@@ -128,8 +128,8 @@
             <div id="verify-text" style="margin:10px; color:#7f8c8d; font-size:14px;">L'avversario propone:</div>
             <div class="duel-display" id="verify-display" style="margin-bottom: 20px;"></div>
             <div id="verify-buttons" class="btn-verify-group" style="display:none;">
-                <button class="btn-reject" onclick="rejectBotMove()">CONTESTA ❌</button>
-                <button class="btn-accept" onclick="acceptBotMove()">ACCETTA ✅</button>
+                <button class="btn-reject" onclick="sendVerification(false)">CONTESTA ❌</button>
+                <button class="btn-accept" onclick="sendVerification(true)">ACCETTA ✅</button>
             </div>
             <div id="verify-waiting" style="display:none; color:#7f8c8d; margin-top:20px;">In attesa dell'avversario...</div>
         </div>
@@ -239,7 +239,7 @@
     </div>
 
     <script>
-        const APP_PREFIX = "nabla-game-2025-v5-"; 
+        const APP_PREFIX = "nabla-game-2025-v6-"; 
         const peerConfig = {
             debug: 2,
             config: {
@@ -284,7 +284,8 @@
         let targetSlotId = null; 
         let targetOwnerIsMe = false; 
         let firstSelection = null; 
-        let pendingLocalMove = null; // Memorizza la mossa in attesa di conferma
+        let pendingLocalMove = null; 
+        let currentVerifyRequest = null; 
 
         function initGameData(isCreator) {
             const initialField = [
@@ -360,6 +361,7 @@
                     updateUI();
                     break;
                 case 'REQUEST_VERIFY':
+                    currentVerifyRequest = data; 
                     showVerifyModal(data.opCard, data.targetIndex, data.resultLatex, data.isSelfTarget);
                     break;
                 case 'VERIFY_RESULT':
@@ -367,21 +369,21 @@
                     document.getElementById('verify-waiting').style.display = 'none';
                     document.getElementById('verify-buttons').style.display = 'flex';
                     if(data.approved) {
-                        // Uso il risultato che IO ho calcolato, non quello che (forse) mi manda lui
                         if(pendingLocalMove) {
                             applyMyMove(pendingLocalMove.result);
                             pendingLocalMove = null;
                         }
                     } else {
-                        alert("Contestazione! Mossa annullata.");
+                        alert("Contestazione! Hai perso il turno.");
                         selectedHandCardId = null;
                         pendingLocalMove = null;
-                        updateUI();
+                        // Penalty: Pass turn immediately without doing anything
+                        sendStateAndPass();
                     }
                     break;
                 case 'TURN_CHANGE':
                     isMyTurn = true;
-                    // FIX SYNC: Quando ricevo, "senderField" (il campo del mittente) diventa il mio Opponent
+                    // FIX SYNC: Invert fields
                     opponentSlotsData = data.senderField; 
                     playerSlotsData = data.receiverField; 
                     opponentHandCount = data.handCount;
@@ -548,8 +550,7 @@
             document.getElementById('calc-modal').style.display = 'none';
             const handCard = myHandData.find(c => c.id === selectedHandCardId);
             
-            // Memorizzo la mossa in attesa
-            pendingLocalMove = { result: resultLatex };
+            pendingLocalMove = { result: resultLatex }; // Save locally
 
             document.getElementById('verify-modal').style.display = 'flex';
             document.getElementById('verify-buttons').style.display = 'none';
@@ -567,7 +568,8 @@
         }
 
         function showVerifyModal(opCard, targetIdx, result, isSelfTarget) {
-            // FIX SYNC: Se isSelfTarget è true, l'avversario ha colpito SE STESSO (che per me è opponentSlots)
+            // FIX SYNC logic for receiver:
+            // if sender target self (his player slots), that means my opponent slots
             const targetCard = isSelfTarget ? opponentSlotsData[targetIdx] : playerSlotsData[targetIdx];
             
             const display = document.getElementById('verify-display');
@@ -672,8 +674,6 @@
             isMyTurn = false;
             updateUI();
             
-            // FIX SYNC: Quando invio, "senderField" sono le MIE carte (playerSlots), 
-            // e "receiverField" sono le SUE carte (che io vedo come opponentSlots).
             conn.send({
                 type: 'TURN_CHANGE',
                 senderField: playerSlotsData, 
